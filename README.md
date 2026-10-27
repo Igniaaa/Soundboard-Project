@@ -5,7 +5,7 @@ collegate, pad, tastiera dedicata, uscite principale e cuffie, mix microfono,
 editor della forma d'onda ed effetti per suono.
 
 Questa è una versione di sviluppo **0.7**. Scrub/freeze e qualità degli effetti
-sono ancora in revisione
+sono ancora in revisione.
 La tastiera dedicata controlla i pad anche in secondo piano, ma non sopprime
 i propri tasti nelle altre applicazioni.
 
