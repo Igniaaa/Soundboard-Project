@@ -662,7 +662,7 @@ int main()
     VoiceSettings effectSettings; effectSettings.fadeOut = 0; effectSettings.delayMix = 0.5f;
     effectSettings.requestedAtNs = AudioCore::nowNs();
     effects.trigger(1, &impulse, effectSettings); effects.render(left, right, 225);
-    require(std::abs(left[220] - 0.0433333f) < 0.001f && effects.lastOnsetLatencyMs() >= 0,
+    require(std::abs(left[220] - 0.0325f) < 0.001f && effects.lastOnsetLatencyMs() >= 0,
             "delay tail and software onset measurement");
     effects.stop(); effects.render(left, right, 1);
     effectSettings.delayMix = 0; effectSettings.filterMix = 1; effectSettings.filterCutoffHz = 100;
@@ -703,33 +703,30 @@ int main()
     effectSettings.filterMix = 0; effectSettings.delayTimeMs = 50;
     effectSettings.delayFeedback = 0; effectSettings.delayMix = 0.5f;
     effects.trigger(1, &impulse, effectSettings); effects.render(left, right, 110);
-    require(std::abs(left[50] - 0.0666667f) < 0.001f && std::abs(left[100]) < 0.0001f,
-            "delay time and zero feedback give one repeat");
+    require(std::abs(left[50] - 0.05f) < 0.001f && std::abs(left[100]) < 0.0001f,
+            "delay time and zero feedback give one attenuated repeat");
     effects.stop(); effects.render(left, right, 1);
     effectSettings.delayFeedback = 0.5f;
     effects.trigger(1, &impulse, effectSettings); effects.render(left, right, 110);
-    require(std::abs(left[50] - 0.0333333f) < 0.001f && std::abs(left[100] - 0.0166667f) < 0.001f,
+    require(std::abs(left[50] - 0.025f) < 0.001f && std::abs(left[100] - 0.0125f) < 0.001f,
             "delay feedback controls subsequent repeats");
     effects.stop(); effects.render(left, right, 1);
     VoiceSettings newEffect; newEffect.fadeOut = 0;
     newEffect.reverbMix = 1;
-    effects.trigger(1, &impulse, newEffect); effects.render(left, right, 120);
-    require(left[37] > 0.002f && left[74] > 0, "reverb adds diffuse tail after an impulse");
-    for (const int reflection : {37, 53, 71, 89})
-        require(std::abs(left[reflection] - 0.025f * (1.0f - std::exp(-6.90775527898f * reflection / 2000))) < 0.0001f,
-                "reverb early reflections reserve headroom for their feedback tails");
-    require(left[74] > left[37] * 0.85f && left[74] < left[37],
-            "two-second reverb decay retains the expected feedback level");
+    effects.trigger(1, &impulse, newEffect); effects.render(left, right, 800);
+    require(left[0] == 0.2f && rms(left, 20, 800) > 0.0001,
+            "reverb retains the dry impulse and adds a diffuse audible tail");
+    const double longReverbTail = rms(left, 300, 800);
     effects.stop(); effects.render(left, right, 1);
     newEffect.reverbDecay = 0.2f;
-    effects.trigger(1, &impulse, newEffect); effects.render(left, right, 120);
-    require(left[74] < left[37] * 0.3f, "short reverb decay reduces feedback quickly");
+    effects.trigger(1, &impulse, newEffect); effects.render(left, right, 800);
+    require(rms(left, 300, 800) < longReverbTail * 0.35, "short reverb decay reduces late tail energy");
     effects.stop(); effects.render(left, right, 1);
     newEffect.reverbMix = 0; newEffect.pingPongMix = 1; newEffect.pingPongTimeMs = 50;
     newEffect.pingPongFeedback = 0.5f;
     auto leftImpulse = constant(4, 0); leftImpulse.samples[0] = 0.2f;
     effects.trigger(1, &leftImpulse, newEffect); effects.render(left, right, 110);
-    require(std::abs(left[50] - 0.05f) < 0.001f && right[50] == 0 && std::abs(right[100] - 0.025f) < 0.001f,
+    require(std::abs(left[50] - 0.1f) < 0.001f && right[50] == 0 && std::abs(right[100] - 0.05f) < 0.001f,
             "ping-pong delay alternates stereo channels");
     effects.stop(); effects.render(left, right, 1);
     newEffect.pingPongMix = 0; newEffect.chorusMix = 1;

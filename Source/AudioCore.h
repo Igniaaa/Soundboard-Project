@@ -160,6 +160,17 @@ public:
             reverbFrames[line] = std::max(1, static_cast<int>(std::round(sampleRate * reverbTimesMs[line] / 1000.0)));
             reverbCapacity += reverbFrames[line];
         }
+        int diffusionFrames = 0;
+        for (std::size_t stage = 0; stage < reverbDiffuserFrames.size(); ++stage)
+        {
+            reverbDiffuserOffsets[stage] = reverbCapacity;
+            reverbDiffuserFrames[stage] = std::max(1, static_cast<int>(std::round(sampleRate * reverbDiffuserTimesMs[stage] / 1000.0)));
+            reverbCapacity += reverbDiffuserFrames[stage];
+            diffusionFrames += reverbDiffuserFrames[stage];
+        }
+        reverbDiffusionTailFrames = diffusionFrames
+            * static_cast<int>(std::ceil(std::log(0.0001) / std::log(reverbDiffuserGain)));
+        reverbDampingAlpha = static_cast<float>(1.0 - std::exp(-6.283185307179586 * 6000.0 / sampleRate));
         reverb.assign(static_cast<std::size_t>(maxVoices * reverbCapacity), {});
         chorusCapacity = std::max(1, static_cast<int>(std::ceil(sampleRate * 0.05)));
         chorus.assign(static_cast<std::size_t>(maxVoices * chorusCapacity), {});
@@ -167,6 +178,7 @@ public:
         volume = targetVolume.load();
         pitch = targetPitch.load();
         limiterGain = 1.0f;
+        limiterHoldFrames = 0;
         for (auto& v : voices) clearVoice(v);
         groupCount = 0;
         active.store(0);
@@ -224,6 +236,7 @@ public:
         const double wantedPitch = targetPitch.load();
         const float smooth = static_cast<float>(1.0 - std::exp(-1.0 / (0.01 * sampleRate)));
         const float recovery = static_cast<float>(1.0 - std::exp(-1.0 / (0.10 * sampleRate)));
+        const int limiterHoldLength = std::max(1, static_cast<int>(std::ceil(0.02 * sampleRate)));
         const float energySmooth = static_cast<float>(1.0 - std::exp(-1.0 / (0.02 * sampleRate)));
         const float balanceSmooth = smooth;
         double scrubTarget = scrubTargetSeconds.load(std::memory_order_relaxed);
@@ -324,14 +337,14 @@ public:
                         auto& cell = delay[static_cast<std::size_t>(v.delaySlot * delayCapacity + v.delayCursor)];
                         const float delayedL = cell.epoch == v.delayEpoch ? cell.left : 0.0f;
                         const float delayedR = cell.epoch == v.delayEpoch ? cell.right : 0.0f;
-                        // Normalise the feedback input and the dry/wet sum.
-                        // A sustained, resonant signal must not gain 1/(1-f)
-                        // at each effect and force the final limiter to distort.
+                        // Bound feedback accumulation and keep the first echo
+                        // at least 6 dB below the dry hit, even with zero
+                        // feedback and maximum Mix. Leave the dry path intact.
                         const float inputGain = 1.0f - v.delayFeedback;
                         cell = {sourceL * inputGain + delayedL * v.delayFeedback,
                                 sourceR * inputGain + delayedR * v.delayFeedback, v.delayEpoch};
-                        sourceL = (sourceL + delayedL * v.delayMix) / (1.0f + v.delayMix);
-                        sourceR = (sourceR + delayedR * v.delayMix) / (1.0f + v.delayMix);
+                        sourceL += delayedL * v.delayMix * 0.5f;
+                        sourceR += delayedR * v.delayMix * 0.5f;
                         if (++v.delayCursor == v.delayFrames) v.delayCursor = 0;
                     }
                     if (v.pingPongMix > 0.0f)
@@ -342,8 +355,8 @@ public:
                         const float inputGain = 1.0f - v.pingPongFeedback;
                         cell = {sourceL * inputGain + wetR * v.pingPongFeedback,
                                 sourceR * inputGain + wetL * v.pingPongFeedback, v.delayEpoch};
-                        sourceL = (sourceL + wetL * v.pingPongMix) / (1.0f + v.pingPongMix);
-                        sourceR = (sourceR + wetR * v.pingPongMix) / (1.0f + v.pingPongMix);
+                        sourceL += wetL * v.pingPongMix;
+                        sourceR += wetR * v.pingPongMix;
                         if (++v.pingPongCursor == v.pingPongFrames) v.pingPongCursor = 0;
                     }
                     if (v.chorusMix > 0.0f)
@@ -382,14 +395,41 @@ public:
                             const float delayedL = cell.epoch == v.delayEpoch ? cell.left : 0.0f;
                             const float delayedR = cell.epoch == v.delayEpoch ? cell.right : 0.0f;
                             const float feedback = v.reverbFeedback[line];
-                            cell = {sourceL * (1.0f - feedback) + delayedL * feedback,
-                                    sourceR * (1.0f - feedback) + delayedR * feedback, v.delayEpoch};
+                            v.reverbDampedL[line] += reverbDampingAlpha * (delayedL - v.reverbDampedL[line]);
+                            v.reverbDampedR[line] += reverbDampingAlpha * (delayedR - v.reverbDampedR[line]);
+                            // Suppress inaudibly small feedback before it can
+                            // enter slow subnormal arithmetic on a long tail.
+                            if (std::abs(v.reverbDampedL[line]) < 1e-20f) v.reverbDampedL[line] = 0;
+                            if (std::abs(v.reverbDampedR[line]) < 1e-20f) v.reverbDampedR[line] = 0;
+                            cell = {sourceL * (1.0f - feedback) + v.reverbDampedL[line] * feedback,
+                                    sourceR * (1.0f - feedback) + v.reverbDampedR[line] * feedback, v.delayEpoch};
                             wetL += line % 2 == 0 ? delayedL : delayedR;
                             wetR += line % 2 == 0 ? delayedR : delayedL;
                             if (++v.reverbCursors[line] == reverbFrames[line]) v.reverbCursors[line] = 0;
                         }
-                        sourceL = (sourceL + wetL * (v.reverbMix * 0.25f)) / (1.0f + v.reverbMix);
-                        sourceR = (sourceR + wetR * (v.reverbMix * 0.25f)) / (1.0f + v.reverbMix);
+                        wetL *= 0.25f; wetR *= 0.25f;
+                        // True Schroeder allpasses diffuse the reflections
+                        // without normalising or delaying the dry path. Both
+                        // channels have their own cells, including anti-phase
+                        // inputs; epochs hide every previous voice's contents.
+                        for (std::size_t stage = 0; stage < reverbDiffuserFrames.size(); ++stage)
+                        {
+                            auto& cell = reverb[static_cast<std::size_t>(base + reverbDiffuserOffsets[stage]
+                                                                        + v.reverbDiffuserCursors[stage])];
+                            const float delayedL = cell.epoch == v.delayEpoch ? cell.left : 0.0f;
+                            const float delayedR = cell.epoch == v.delayEpoch ? cell.right : 0.0f;
+                            const float diffusedL = delayedL - reverbDiffuserGain * wetL;
+                            const float diffusedR = delayedR - reverbDiffuserGain * wetR;
+                            const float storedL = wetL + reverbDiffuserGain * diffusedL;
+                            const float storedR = wetR + reverbDiffuserGain * diffusedR;
+                            cell = {std::abs(storedL) < 1e-20f ? 0.0f : storedL,
+                                    std::abs(storedR) < 1e-20f ? 0.0f : storedR, v.delayEpoch};
+                            wetL = diffusedL; wetR = diffusedR;
+                            if (++v.reverbDiffuserCursors[stage] == reverbDiffuserFrames[stage])
+                                v.reverbDiffuserCursors[stage] = 0;
+                        }
+                        sourceL += wetL * v.reverbMix;
+                        sourceR += wetR * v.reverbMix;
                     }
                     const float gain = (v.overrideMasterVolume ? v.gain : volume) * releaseEnvelope;
                     const float outL = sourceL * gain, outR = sourceR * gain;
@@ -442,8 +482,19 @@ public:
             }
             const float p = std::max(std::abs(l), std::abs(r));
             const float required = p > 0.98f ? 0.98f / p : 1.0f;
-            limiterGain = required < limiterGain ? required : limiterGain + (required - limiterGain) * recovery;
-            l *= limiterGain; r *= limiterGain;
+            if (required < limiterGain) limiterGain = required;
+            // Keep the gain steady between bass peaks. A tolerance of 0.1%
+            // also catches peaks that fall between samples on later cycles.
+            // Release only after the overload has actually subsided, rather
+            // than modulating the gain at every zero crossing. No lookahead.
+            if (required < 1.0f && required <= limiterGain * 1.001f)
+                limiterHoldFrames = limiterHoldLength;
+            else if (limiterHoldFrames > 0)
+                --limiterHoldFrames;
+            else
+                limiterGain += (required - limiterGain) * recovery;
+            l = static_cast<float>(l * limiterGain);
+            r = static_cast<float>(r * limiterGain);
             if (left) left[frame] = l;
             if (right) right[frame] = r;
             blockPeak = std::max(blockPeak, std::max(std::abs(l), std::abs(r)));
@@ -484,7 +535,9 @@ private:
         int delaySlot = 0, delayCursor = 0, delayFrames = 1, tailFrames = 0;
         float reverbMix = 0;
         std::array<float, 4> reverbFeedback {};
+        std::array<float, 4> reverbDampedL {}, reverbDampedR {};
         std::array<int, 4> reverbCursors {};
+        std::array<int, 4> reverbDiffuserCursors {};
         float pingPongMix = 0, pingPongFeedback = 0;
         int pingPongCursor = 0, pingPongFrames = 1, pingPongTailFrames = 0;
         float chorusMix = 0, chorusDepth = 0, chorusPhase = 0, chorusIncrement = 0;
@@ -596,7 +649,7 @@ private:
             v.reverbFeedback[line] = static_cast<float>(std::exp(-6.907755278982137 * reverbFrames[line]
                 / (sampleRate * reverbDecay)));
         if (v.reverbMix > 0.0f && !v.loop)
-            v.tailFrames += static_cast<int>(reverbDecay * sampleRate * (4.0 / 3.0));
+            v.tailFrames += static_cast<int>(reverbDecay * sampleRate * (4.0 / 3.0)) + reverbDiffusionTailFrames;
         v.pingPongMix = std::clamp(c.settings.pingPongMix, 0.0f, 1.0f);
         v.pingPongFeedback = std::clamp(c.settings.pingPongFeedback, 0.0f, 0.8f);
         const auto pingPongTime = std::isfinite(c.settings.pingPongTimeMs) ? c.settings.pingPongTimeMs : 250.0f;
@@ -634,6 +687,11 @@ private:
     int reverbCapacity = 1, chorusCapacity = 1;
     static constexpr std::array<int, 4> reverbTimesMs {37, 53, 71, 89};
     std::array<int, 4> reverbFrames {}, reverbOffsets {};
+    static constexpr std::array<double, 4> reverbDiffuserTimesMs {5.1, 7.7, 10.3, 12.7};
+    static constexpr float reverbDiffuserGain = 0.65f;
+    std::array<int, 4> reverbDiffuserFrames {}, reverbDiffuserOffsets {};
+    int reverbDiffusionTailFrames = 0;
+    float reverbDampingAlpha = 1;
     std::uint32_t nextDelayEpoch = 0;
     std::atomic<std::uint64_t> generation {0};
     std::uint64_t consumedGeneration = 0, serial = 0;
@@ -648,6 +706,10 @@ private:
     std::atomic<bool> trackedEverStarted {false};
     std::atomic<double> publishedSeconds {-1.0};
     double sampleRate = 48000.0, pitch = 1.0;
-    float volume = 0.7f, limiterGain = 1.0f;
+    float volume = 0.7f;
+    // Double precision lets the slow release keep converging at 96/192 kHz
+    // instead of stalling once a float increment falls below one ULP.
+    double limiterGain = 1.0;
+    int limiterHoldFrames = 0;
 };
 }

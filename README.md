@@ -31,6 +31,7 @@ Al primo avvio collega le cartelle dei tuoi suoni e configura le uscite.
 - [Architettura e sorgenti](DOCUMENTAZIONE-CODICE.md)
 - [Verifiche della versione](VERIFICHE-0.7.md)
 - [Ultima revisione audio](VERIFICHE-AUDIO-REVIEW.md)
+- [Diffusione del riverbero e verifiche](VERIFICHE-RIVERBERO.md)
 - [Verifiche dello scrub](VERIFICHE-SCRUB.md)
 - [Preparazione e caricamento su GitHub](GITHUB.md)
 - [Editor visivo Debug](EDITOR-UI.md)

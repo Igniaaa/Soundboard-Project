@@ -3,15 +3,21 @@
 ## Build di revisione audio — 27 ottobre 2026
 
 Per provare le ultime correzioni, chiudi l'app precedente e avvia
-**DualDeckJuce-0.7-audio-review.exe**. Questa build usa gli stessi dati.
-Delay, ping-pong e riverbero compensano l'accumulo di livello del feedback
-e del mix: con valori alti il suono e le prime ripetizioni possono essere
-meno forti. Corrette le discontinuità della coda a fine file e il taglio
+**DualDeckJuce-0.7.exe**, aggiornato dalla compilazione finale. La copia
+**DualDeckJuce-0.7-audio-review.exe** è identica e usa gli stessi dati.
+Delay, ping-pong e riverbero mantengono il livello del suono diretto anche
+al 100% di mix: il mix aggiunge le code senza dimezzare l'attacco.
+La stabilizzazione del feedback rimane; quando la somma è troppo forte
+interviene il limiter stereo, con breve mantenimento e recupero graduale
+del volume. Non è aggiunto ritardo audio. Corrette le discontinuità della coda a fine file e il taglio
 anticipato del delay. Rivista la componente rumorosa di scrub/freeze e
-ridotto il costo dei raccordi. Quattro suite CTest passano; il timbro
+ridotto il costo dei raccordi. Il riverbero ora diffonde le riflessioni
+e smorza gli acuti nelle ripetizioni, per ridurre la coda rada e ronzante
+segnalata anche con il solo effetto. Cinque suite CTest passano; il timbro
 metallico segnalato dall'utente resta da verificare all'ascolto e i buffer
 piccoli non sono certificati senza dropout.
 Dettagli in [VERIFICHE-AUDIO-REVIEW.md](VERIFICHE-AUDIO-REVIEW.md).
+Ultima revisione del riverbero e confronto su Bonk in [VERIFICHE-RIVERBERO.md](VERIFICHE-RIVERBERO.md).
 Per preparare i sorgenti per GitHub, vedere [GITHUB.md](GITHUB.md).
 
 Per l'architettura, i flussi di esecuzione e i criteri per estendere i sorgenti, consulta la [documentazione del codice](DOCUMENTAZIONE-CODICE.md).
@@ -30,7 +36,7 @@ Per spostare e ridimensionare i controlli direttamente nella GUI, usa la [build 
 
 - **Audio ed effetti** apre l'editor del pad. La card **Audio e tagli** mostra la forma d'onda e i marcatori per inizio e fine; il file originale non viene modificato.
 - La card **Filtri** offre un **passa basso** per tagliare gli acuti e un **passa alto** per tagliare i bassi. Entrambi hanno **Frequenza** (100–18.000 Hz) e **Mix** (0–100%). A mix 0 il filtro è spento; spostare la frequenza lo attiva automaticamente al 100%. Per ascoltare la modifica, salva e riavvia il suono.
-- La card **Delay** separa **Tempo** (50–1.000 ms), **Feedback** (0–80%) e **Mix** (0–100% delle ripetizioni). Il segnale originale resta udibile; a mix 0 il delay è spento.
+- La card **Delay** separa **Tempo** (50–1.000 ms), **Feedback** (0–80%) e **Mix** (0–100% delle ripetizioni). Il segnale originale mantiene il suo volume; le eco sono attenuate di altri 6 dB, così anche con Mix 100% e Feedback 0 la prima eco ha metà ampiezza rispetto all'originale. A Mix 0 il delay è spento; Feedback 0 produce una sola eco.
 - Le impostazioni vengono salvate per pad e si applicano alle nuove riproduzioni. Lo schema 9 ha introdotto le card filtro e delay; i vecchi valori di filtro ed eco vengono convertiti nei loro controlli, mentre il passa alto parte spento. La precedente scelta globale dei volumi viene trasferita a ciascun pad.
 
 ## Novità 0.6: editor, effetti, microfono e librerie più grandi

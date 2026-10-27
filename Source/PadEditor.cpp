@@ -207,7 +207,7 @@ PadEditorPanel::PadEditorPanel()
     highPassHeading.setText("FILTRO PASSA ALTO", juce::dontSendNotification);
     highPassHint.setText("Taglia i bassi. Mix 0% = spento.", juce::dontSendNotification);
     delayHeading.setText("DELAY", juce::dontSendNotification);
-    delayHint.setText("Ripetizioni ritardate; il segnale originale resta udibile.", juce::dontSendNotification);
+    delayHint.setText("Eco attenuate; il suono originale mantiene il suo volume.", juce::dontSendNotification);
     startLabel.setText("A - inizio (s)", juce::dontSendNotification);
     endLabel.setText("B - fine (s), 0 = fine file", juce::dontSendNotification);
     previewLoop.setTooltip("Ascolta ripetutamente il tratto tra A e B senza salvare.");

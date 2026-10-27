@@ -2,8 +2,24 @@
 
 La radice del repository è **questa cartella `juce-version`**, che contiene
 già `.git`. Non occorre inizializzare un altro repository nella cartella
-superiore `DualDeck-2`. Il ramo attuale è `main`; al momento della verifica
-non era configurato alcun remote.
+superiore `DualDeck-2`. Il ramo attuale è `main`. Al controllo finale del
+27 ottobre il remote `origin` è già collegato a
+`https://github.com/Igniaaa/Soundboard-Project.git` e il commit locale
+`2daa603` coincide con il riferimento locale `origin/main`.
+
+Per gli aggiornamenti successivi non occorre ricreare il repository:
+
+```powershell
+git status --short
+git diff
+git add .
+git commit -m "Update audio review documentation"
+git push origin main
+```
+
+Usare un messaggio di commit che descriva le modifiche effettivamente
+presenti. Se `git status` non mostra modifiche, il commit non serve.
+Le istruzioni di prima pubblicazione sotto valgono per un repository nuovo.
 
 ## Cosa includere
 
@@ -40,8 +56,9 @@ pubblico il progetto; conservare anche `JUCE-LICENSE.md`.
 
 1. Scegli **File → Add local repository** e seleziona `juce-version`.
 2. Esamina le modifiche e crea un commit con una descrizione del contenuto.
-3. Usa **Publish repository**, scegli nome e visibilità. Per una prima copia
-   personale puoi mantenere il repository privato.
+3. Per questo repository usa **Push origin** per caricare nuovi commit.
+   **Publish repository** serve invece quando un repository non è ancora
+   collegato a GitHub; in quel caso scegli nome e visibilità.
 
 ## Alternativa da terminale
 

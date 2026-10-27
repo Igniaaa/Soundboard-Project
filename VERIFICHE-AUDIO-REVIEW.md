@@ -1,6 +1,88 @@
 # Revisione audio dopo il riscontro dell'utente — 27 ottobre 2026
 
-## Stato e build
+## Prima eco del delay a volume pieno — ultima revisione
+
+L'utente segnala una seconda copia a volume originale dopo il tempo del
+delay. La riproduzione con impulso stereo misura originale 0,8 e prima eco
+0,8 con Mix 100% e Feedback 0. L'ingresso normalizzato per `1 - feedback`
+non attenuava la prima eco in questa condizione.
+
+Il solo ritorno wet del delay viene ora attenuato di 6,02 dB (fattore 0,5).
+Il diretto mantiene il proprio volume; Mix regola le eco e Feedback
+continua a regolarne il decadimento. Nessuna modifica a ping-pong,
+riverbero, dati salvati o durata delle code. A Feedback 0 rimane una sola
+eco, già più debole; a Mix 0 il delay resta spento.
+
+La regressione è stata osservata fallire prima della correzione. Il test
+del motore reale usa impulsi stereo a 44,1/48/96 kHz, Mix 0/50/100% e
+Feedback 0/35/80%: verifica volume del diretto, prima e seconda eco,
+polarità stereo, tempo esatto e assenza di partenze aggiuntive.
+Con originale 0,8 e Mix 100%, le prime due eco attese sono 0,4/0
+(Feedback 0), 0,26/0,091 (35%) e 0,08/0,064 (80%).
+
+`Build.ps1` completato: cinque suite CTest superate, inclusi 87 controlli
+di qualità audio. L'ascolto con i suoni e le impostazioni dell'utente resta
+la verifica del risultato percepito.
+
+La successiva segnalazione di gracchiare con il solo riverbero ha portato
+alla [revisione della sua struttura](VERIFICHE-RIVERBERO.md): aggiunti
+diffusori e smorzamento, conservando il livello del diretto e il limiter
+descritti qui. La build corrente passa cinque suite CTest; sotto sono
+documentate le revisioni precedenti.
+
+## Correzione del livello iniziale — revisione successiva
+
+L'utente segnala che la prima revisione attenuava troppo il suono già
+all'avvio. Ha scelto e approvato code più forti con limiter sul totale,
+senza attenuazione fissa del diretto. Le sezioni precedenti conservate sotto
+descrivono la storia: la normalizzazione dell'intero mix è stata rimossa.
+
+**Diagnosi riprodotta prima della correzione:** un impulso a 0,8 usciva a
+0,4 con delay o riverbero e a 0,2 con entrambi al 100%. La divisione per
+`1 + mix` agiva prima di ogni ripetizione; ora il primo campione resta 0,8
+in tutti e quattro i casi (incluso ping-pong), conservando anche il destro
+negativo a -0,4.
+
+Rimane la stabilizzazione dell'ingresso del feedback per `1 - feedback`.
+Le code vengono aggiunte al diretto. Se la somma raggiunge il limite,
+il limiter stereo interviene sul totale: attacco rapido, mantenimento di
+circa 20 ms e recupero di circa 100 ms. Non vengono introdotti lookahead,
+buffer aggiuntivi o latenza. La forma d'onda può comunque essere modificata
+dalla protezione su transienti o sovraccarichi: non è una garanzia universale
+di assenza di distorsione.
+
+**TDD e verifiche:**
+
+- Regressione dell'attacco osservata fallire prima e passare dopo.
+- A livelli sotto il limite, mix e feedback massimi mantengono la
+  proporzionalità del segnale; delay più riverbero producono picco circa
+  0,36 per una nota sorgente di picco 0,09, senza la precedente riduzione.
+- Un basso sinusoidale a 50 Hz in sovraccarico misurava residuo rispetto
+  alla fondamentale di 0,0172371 (circa 1,72%) con il vecchio limiter. Il
+  mantenimento riduce quel residuo a circa 3e-8 dopo l'assestamento a
+  44,1/48/96/192 kHz. Picchi entro 0,98 e relazione stereo conservata.
+- Il test di recupero ha rilevato un arresto prematuro dell'accumulatore
+  float a 96 kHz: 0,0999714 invece di circa 0,1 dopo un secondo. Il guadagno
+  in doppia precisione converge a circa 0,0999973 alle quattro frequenze.
+- `Build.ps1` completato: tutte le quattro suite CTest passano. AudioCore
+  mantiene 525 controlli, time stretching 192, tastiera 16; la suite di
+  qualità audio passa da 10 a 27 controlli.
+
+Aggiornati `DualDeckJuce-0.7.exe`, `DualDeckJuce.exe` e la copia
+`DualDeckJuce-0.7-audio-review.exe`. La verifica percettiva va effettuata
+con gli stessi file che presentavano il problema. Design e piano sono in
+`docs/superpowers`; report locali in `test-output/attack-regression-before.txt`,
+`attack-regression-after.txt`, `limiter-hold-before.txt` e nel ledger locale
+del piano. Nessuna modifica allo scrub in questa correzione.
+
+La revisione indipendente non ha trovato problemi critici o importanti e
+ha rieseguito i 27 controlli di qualità. Rimandati: asserzioni temporali
+intermedie del recupero e approfondimento dei sub-bassi sotto 25 Hz, per i
+quali un mantenimento di 20 ms non elimina ogni modulazione. A 20 Hz il
+replay numerico del revisore misura residuo circa 0,00103. Le misure sopra
+riguardano il caso a 50 Hz, non tutti i segnali bassi.
+
+## Stato e build della prima revisione (storico)
 
 L'utente riferisce che scrub e freeze suonano ancora metallici, e che delay
 più riverbero gracchiano con mix e feedback alti. Conferma invece che la
@@ -14,10 +96,12 @@ Compilazione Release completata e quattro suite CTest superate:
 - `audio_quality`: 10 nuovi controlli.
 - `keyboard_filter`: 16 controlli.
 
-La copia finale prevista da `Build.ps1` non riesce perché l'eseguibile
-`DualDeckJuce-0.7.exe` è aperto. Nessun processo dell'utente è stato chiuso.
-La build compilata è stata copiata in **DualDeckJuce-0.7-audio-review.exe**;
-SHA-256 uguale a `build-msvc/bin/DualDeckJuce.exe`:
+Inizialmente la copia finale prevista da `Build.ps1` era impedita
+dall'eseguibile aperto. La compilazione finale ha completato anche la copia
+di **DualDeckJuce-0.7.exe** e **DualDeckJuce.exe**. Nessun processo dell'utente
+è stato chiuso durante la revisione. È disponibile anche la copia
+**DualDeckJuce-0.7-audio-review.exe**. Tutti hanno SHA-256 uguale a
+`build-msvc/bin/DualDeckJuce.exe`:
 `3FF977A6101F158C8571B2E281B21800D9D03A798230A48F6C59EDBEE83D04E3`.
 Chiudere l'app precedente prima di provare questo eseguibile, che usa la
 stessa cartella dati. Non sono state effettuate prove di ascolto fisico.
@@ -99,4 +183,6 @@ Ascoltare la nuova build con gli stessi file che presentano il problema,
 sia a effetti disattivati sia con delay e riverbero insieme. La qualità
 metallica non viene dichiarata risolta senza questa verifica. Restano le
 misure sulle uscite reali e il lavoro necessario per garantire il rispetto
-dei tempi con buffer piccoli. Nessun commit o push è stato eseguito.
+dei tempi con buffer piccoli. Questa revisione non ha eseguito comandi di
+commit o push; al controllo finale lo stato esterno del repository risulta
+aggiornato al commit `2daa603`, con `origin` configurato. Vedere [GITHUB.md](GITHUB.md).
