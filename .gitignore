@@ -1,0 +1,24 @@
+/build/
+/build-msvc/
+/build-ui-debug/
+/deps/
+/tools/
+/data/
+/sounds/
+/test-output/
+/backups/
+/*.exe
+/build-log.txt
+/test-log.txt
+
+# Local IDE settings, credentials and compiler by-products
+/.vs/
+/.env
+/.env.*
+!.env.example
+*.user
+*.obj
+*.pdb
+*.ilk
+__pycache__/
+*.pyc
