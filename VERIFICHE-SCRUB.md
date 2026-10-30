@@ -1,4 +1,162 @@
-# Verifiche scrub e velocità zero — 27 ottobre 2026
+# Verifiche scrub e velocità zero
+
+## Versione approvata all'ascolto — 30 ottobre 2026
+
+Dopo aver provato `DualDeckJuce-0.7-freeze-range.exe`, l'utente conferma:
+«Questa versione va bene». Il freeze con range PCM ampliato del 25% è
+quindi il nuovo riferimento approvato per i prossimi interventi.
+`DualDeckJuce-0.7.exe` e la build corrente hanno lo stesso SHA-256 della
+versione provata:
+`939F27CC0CAAE2B027A30BBAE16C31DABCC8C4A65F68F061D78BA22B74A3B99C`.
+Il riscontro conferma l'ascolto nell'uso provato; non sono stati specificati
+file, dispositivo o buffer e restano i limiti già documentati.
+Questa registrazione non modifica il motore e non introduce nuovi test.
+
+## Range del freeze ampliato — 30 ottobre 2026
+
+L'utente ha provato la consolidata e riferisce un audio «un po' più
+gradevole»; chiede di ampliare leggermente il range di campioni usato a
+tempo zero. Il contributo PCM del freeze stabile usa ora un intorno più
+ampio del 25%: circa 53,3 ms a 48/96/192 kHz e 58,0 ms a 44,1 kHz, contro
+42,7 e 46,4 ms. Sono durate del materiale sorgente disponibile, non misure
+di latenza. Il range viene limitato ai bordi del file. La finestra FFT,
+l'intonazione, il mix PCM/spettrale e la gestione degli attacchi restano
+quelli del motore consolidato.
+
+La nuova regressione modifica soltanto un tratto di rumore stereo a
+24–26 ms dopo il cursore, fuori dalla vecchia finestra: prima della modifica
+il freeze non lo include (differenza RMS zero) e il test fallisce; dopo lo
+include a tutte le frequenze provate. Un tratto a 36–38 ms resta escluso
+con differenza zero. Verificati sorgenti a 8/48 kHz, uscite a
+44,1/48/96/192 kHz, valori finiti e rapporto stereo. Restano superati i
+controlli su silenzio prima della nota a +30 ms, bordi, file corti,
+intonazione e passaggio dal movimento al freeze.
+
+`Build.ps1` completato e cinque suite CTest superate; `audio_behaviour`
+contiene ora 552 controlli. Log prima/dopo in
+`test-output/freeze-range/before.txt` e `after.txt`.
+
+Il confronto indipendente con i sorgenti salvati prima della modifica
+produce campioni identici in 32 casi di trascinamento continuo: due
+segnali, avanti/indietro, eventi mouse a 30/60 Hz e le quattro frequenze
+di uscita (6.081.600 campioni di canale, errore massimo zero). Probe e report:
+`test-output/freeze-range/CompareMotion.ps1` e `motion.txt`. Il primo probe
+includeva una sosta iniziale prima del primo movimento e differiva in
+tutti i casi: il freeze più ampio cambia correttamente lo stato iniziale
+del lettore PCM. Questa prova è conservata in `CompareMotion-initial-hold.cpp`
+e `motion-initial-hold.txt`. Il confronto sul solo movimento invia il primo
+spostamento prima del primo hop; non certifica identità dopo una sosta.
+
+Disponibile `DualDeckJuce-0.7-freeze-range.exe`, identico alla build e ai
+nomi standard aggiornati. La precedente `DualDeckJuce-0.7-consolidated.exe`
+è conservata per confronto; sorgenti e copia precedente sono in
+`backups/freeze-range-2026-10-30/`. Revisione indipendente senza rilievi.
+La successiva conferma d'ascolto dell'utente è registrata sopra; non sono
+state effettuate prove di ascolto fisico da parte dell'agente o nuove
+misure di latenza.
+
+## Consolidamento di audio-review — 29 ottobre 2026
+
+L'utente ha confrontato le build e preferisce lo scrub di
+`DualDeckJuce-0.7-audio-review.exe`, confermando che è quella inizialmente
+chiamata «Audio Preview». Su questa base sono stati ripristinati solo
+`Source/PhantomScrub.h` e `Source/SpectralScrub.h` dalla copia precedente
+all'esperimento del 29 ottobre. I due file corrispondono anche ai sorgenti
+in HEAD (`469c011`). Effetti, libreria, interfaccia e dati personali non
+sono stati modificati.
+
+Prima del ripristino sono stati conservati sorgenti, test, configurazione,
+note, patch ed eseguibili sperimentali in
+`backups/scrub-consolidation-2026-10-29/`. Il test sperimentale
+`ScrubTextureTests.cpp`, che richiede la nuova API di retarget e impone
+criteri di texture della variante scartata, è stato archiviato insieme
+all'esperimento e rimosso dai target CMake. Non sono state abbassate le sue
+soglie per far passare il motore precedente. Restano attive tutte le cinque
+suite precedenti; l'estensione compatibile dell'helper di misura è conservata.
+
+Il confronto locale compila una copia indipendente dei sorgenti precedenti
+in un namespace distinto: due segnali (risonanza rumorosa e rumore con
+nota), freeze, trascinamento avanti/indietro e arresto, a 44,1/48/96/192 kHz.
+Prima del ripristino tutti i 24 casi differiscono. Dopo il ripristino,
+4.561.200 campioni di canale coincidono esattamente, con errore massimo zero.
+Si verifica così la corrispondenza con il motore salvato, non una misura
+universale della qualità percepita. Probe e report ripetibili sono in
+`test-output/scrub-consolidation/` (`CompareReference.ps1`, `before.txt`,
+`after.txt`).
+
+`Build.ps1` ha ricompilato i sorgenti ripristinati e superato le cinque
+suite CTest: `audio_behaviour`, `scrub_time_stretch`, `audio_quality`,
+`reverb_quality`, `keyboard_filter`. La prima invocazione non ricompilava
+perché le copie conservavano i vecchi timestamp; i timestamp dei due header
+sono stati aggiornati e la build finale ha ricompilato e collegato
+l'applicazione e i test. Log finale: `build.txt` nella stessa cartella.
+
+Disponibile `DualDeckJuce-0.7-consolidated.exe`, identico alla build
+verificata e ai nomi `DualDeckJuce-0.7.exe` e `DualDeckJuce.exe`.
+`DualDeckJuce-0.7-audio-review.exe` e `DualDeckJuce-0.7-scrub.exe` sono
+conservati intatti per confronto. Hash in `binary-hashes.txt`.
+Nessun processo dell'utente è stato chiuso. Resta da confermare all'ascolto
+la nuova compilazione sugli stessi suoni, soprattutto durante trascinamenti
+lenti, inversioni e passaggio al cursore fermo. Restano i limiti con buffer
+piccoli già documentati. Le sezioni sotto descrivono le revisioni storiche,
+incluso l'esperimento ora archiviato.
+
+## Forme d'onda irregolari — 29 ottobre 2026
+
+Riscontro: ronzio metallico a cursore fermo e gracchiare durante il
+trascinamento. Esaminati i fotogrammi e lo spettro audio della registrazione
+fornita; recuperato dalla libreria anche `DEH PE FOH mp3.mp3`, senza modificarlo.
+Non è stato effettuato ascolto fisico.
+
+Due cause riprodotte:
+
+- La piattezza spettrale su bande fisse non distingue sempre una risonanza
+  rumorosa da una nota stabile. Nel campione a 0,54 s circa il 99,6% della
+  potenza era assegnato a regioni senza diffusione, sebbene i due picchi
+  principali avessero coerenza temporale circa 0,68 e 0,66.
+- Riposizionare ripetutamente il phantom sullo stesso frammento rumoroso
+  può stabilizzare un ciclo breve. Il test isolato misura piattezza
+  spettrale 0,0215 senza variazione contro 0,4657 con variazione locale.
+
+La classificazione considera ora anche la coerenza complessa fra le due
+finestre di analisi già disponibili, per ciascun picco. Le misure vengono
+combinate dopo aver calcolato la coerenza separatamente per canale:
+frequenze stereo vicine non devono cancellarsi nella misura. Le componenti
+instabili ricevono diffusione e un contributo PCM maggiore. Il phantom
+varia la posizione entro un hop, in proporzione alla trama rilevata, e
+riduce la ricerca di allineamento per il materiale rumoroso. Gli attacchi
+mantengono la posizione originale. Nessuna nuova allocazione nel callback.
+
+`Tests/ScrubTextureTests.cpp` aggiunge 46 controlli a 44,1/48/96/192 kHz:
+risonanza rumorosa, trascinamento avanti/indietro e arresto sullo stesso
+punto, livelli, stereo in opposizione di fase, rumore durante il movimento,
+toni stereo vicini e phantom riposizionato ripetutamente. La regressione
+della risonanza fallisce sul codice precedente; due mutazioni isolate
+verificano che i test rilevino sia l'aggregazione stereo errata sia la
+disattivazione della variazione PCM. Le suite preesistenti verificano
+anche intonazione/glissando, accordi, attacchi, salti e bordi dei file.
+
+Build Release finale completata; tutte e sei le suite CTest superate.
+Aggiornati `DualDeckJuce-0.7.exe` e la copia dedicata
+`DualDeckJuce-0.7-scrub.exe`, identici alla build verificata. Il nome
+generico `DualDeckJuce.exe` non era sovrascrivibile e non è stato
+aggiornato; nessun processo dell'utente è stato chiuso.
+
+Nel freeze del campione reale a 0,54 s, la quota di potenza nel bin più
+forte passa dal 44,15% al 2,46% (FFT Hann da un secondo, bin da 1 Hz).
+Questo misura una minore concentrazione in toni persistenti, non la
+gradevolezza del risultato. Il confronto locale contiene cinque punti
+del file, nello stesso ordine e con identico guadagno nei due WAV:
+`test-output/scrub-roughness/confronto-before.wav` e `confronto-after.wav`.
+
+Limiti: la classificazione resta euristica; un probe esplorativo su
+armoniche molto fitte a 55/80 Hz mostra ancora una classificazione rumorosa
+preesistente, non risolta da questa modifica. Le misure di costo su una
+voce non certificano il rispetto del budget di callback: sono presenti
+sforamenti con blocchi da 128 campioni, soprattutto a 96/192 kHz, anche
+nel codice precedente. Il risultato percettivo va verificato con il
+campione dell'utente. Report, probe e copie originali sono rispettivamente
+in `test-output/scrub-roughness/` e `backups/scrub-texture-2026-10-29/`.
 
 ## Nuovo riscontro e revisione audio
 

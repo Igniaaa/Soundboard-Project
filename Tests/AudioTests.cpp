@@ -401,6 +401,58 @@ int main()
             }
         }
     }
+    // A held textured sound must draw from the newly included neighbourhood,
+    // without reaching unrelated audio farther away. The marker is beyond the
+    // old analysis window, so only the frozen PCM readers can pick it up.
+    for (const int pcmRate : {8000, 48000})
+    {
+        std::vector<float> bed(pcmRate * 2);
+        std::uint32_t seed = 1234567u;
+        for (int i = 0; i < pcmRate; ++i)
+        {
+            seed ^= seed << 13; seed ^= seed >> 17; seed ^= seed << 5;
+            const float sample = static_cast<float>(0.12 * (seed / 2147483648.0 - 1.0));
+            bed[2 * i] = sample;
+            bed[2 * i + 1] = -0.7f * sample;
+        }
+        for (const int outputRate : {44100, 48000, 96000, 192000})
+        {
+            SpectralScrub baseline;
+            baseline.prepare(outputRate);
+            baseline.start(bed.data(), pcmRate, pcmRate, 0.5);
+            std::vector<float> reference(outputRate);
+            for (auto& sample : reference) sample = baseline.next(0.5).first;
+            for (const double offset : {0.024, 0.036})
+            {
+                auto marked = bed;
+                for (int i = static_cast<int>((0.5 + offset) * pcmRate);
+                     i < static_cast<int>((0.502 + offset) * pcmRate); ++i)
+                {
+                    marked[2 * i] += 0.2f;
+                    marked[2 * i + 1] -= 0.14f;
+                }
+                freeze.prepare(outputRate);
+                freeze.start(marked.data(), pcmRate, pcmRate, 0.5);
+                double differencePower = 0.0, stereoError = 0.0;
+                bool finite = true;
+                for (int i = 0; i < outputRate; ++i)
+                {
+                    const auto sample = freeze.next(0.5);
+                    finite &= std::isfinite(sample.first) && std::isfinite(sample.second);
+                    stereoError = std::max(stereoError, static_cast<double>(std::abs(sample.second + 0.7f * sample.first)));
+                    if (i >= outputRate / 4)
+                        differencePower += std::pow(sample.first - reference[i], 2);
+                }
+                const double difference = std::sqrt(differencePower / (outputRate * 0.75));
+                std::cout << "freeze-range pcm=" << pcmRate << " output=" << outputRate
+                          << " marker-ms=" << offset * 1000 << " difference=" << difference << '\n';
+                require(finite && stereoError < 0.00004,
+                        "wider frozen neighbourhood stays finite and preserves stereo phase");
+                require(offset < 0.03 ? difference > 0.0001 : difference < 0.000001,
+                        "freeze includes nearby texture at 24 ms but excludes audio at 36 ms");
+            }
+        }
+    }
     freeze.prepare(48000);
     auto upcomingNote = tone(96000, 661.0);
     std::fill(upcomingNote.samples.begin(), upcomingNote.samples.begin() + 25440 * 2, 0.0f);

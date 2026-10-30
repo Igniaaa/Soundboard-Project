@@ -139,8 +139,12 @@ public:
                     else
                     {
                         const double centre = analysisCentre(wanted);
-                        phantom.hold(centre - fftSize / 2 * dryStep,
-                                     centre + (fftSize / 2 - 1) * dryStep, heldTexture);
+                        // Give the frozen PCM texture 25% more source material.
+                        // Keep the spectral window and moving readers unchanged;
+                        // the phantom clamps this neighbourhood at file edges.
+                        const double halfRange = fftSize * 0.625 * dryStep;
+                        phantom.hold(centre - halfRange,
+                                     centre + halfRange - dryStep, heldTexture);
                     }
                 }
             }

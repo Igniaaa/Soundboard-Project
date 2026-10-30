@@ -30,7 +30,8 @@ inline std::vector<float> source(int rate, int kind, unsigned seed = 1234567u)
 
 // A long-window spectral flatness measurement detects the artificial narrow
 // lines a frozen noise frame acquires. Measure inside the source's noise band.
-inline double flatness(const std::vector<float>& audio, int rate, int begin)
+inline double flatness(const std::vector<float>& audio, int rate, int begin,
+                       int lowHz = 2000, int highHz = 6000)
 {
     constexpr int n = 16384;
     std::vector<std::complex<double>> bins(n);
@@ -58,7 +59,7 @@ inline double flatness(const std::vector<float>& audio, int rate, int begin)
         }
     }
     double power = 0.0, logarithm = 0.0;
-    const int first = 2000 * n / rate, last = 6000 * n / rate;
+    const int first = lowHz * n / rate, last = highHz * n / rate;
     for (int i = first; i < last; ++i)
     {
         const double p = std::norm(bins[i]);
