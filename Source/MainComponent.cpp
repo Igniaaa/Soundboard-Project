@@ -341,9 +341,9 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
     label(lastKey, "Nessun tasto ricevuto dalla tastiera dedicata.");
     label(keyboardHelp, utf8("1. Premi Riconosci con F12, poi premi e rilascia F12 sulla tastiera da dedicare ai suoni.\n\n"
         "2. Rilascia tutti i tasti e attiva la tastiera selezionata. I suoi comandi funzionano anche con DualDeck in secondo piano.\n\n"
-        "3. Seleziona un pad e usa Associa un tasto. La tastiera principale non avvia i suoni in questa modalità.\n\n"
-        "Questa modalità distingue le tastiere, ma non blocca i tasti nelle altre applicazioni: un tasto può ancora scrivere o attivare comandi nel gioco.\n\n"
-        "Non richiede driver. Dopo un riavvio o un cambio dei dispositivi, l'attivazione va ripetuta."), 14);
+        "3. Seleziona un pad e usa Associa un tasto. I tasti associati arrivano solo dalla tastiera dedicata; i controlli dell'interfaccia restano disponibili.\n\n"
+        "Quando è attiva, i tasti della tastiera dedicata controllano solo DualDeck e vengono bloccati nelle altre applicazioni. La tastiera principale rimane libera.\n\n"
+        "Disattiva l'interruttore per ripristinare i tasti. La chiusura dell'app o un collegamento interrotto rilasciano il blocco. Dopo un cambio dei dispositivi, verifica la selezione e riattiva."), 14);
     keyboardHelp.setJustificationType(juce::Justification::topLeft);
     for (juce::Component* component : std::initializer_list<juce::Component*>{&profiles,&globalMode,&outputDevice,&monitorDevice,&inputDevice,&padMode,&search,&padName,
         &boardTab,&audioTab,&importButton,&newProfile,&renameProfile,&stopButton,&djButton,&previous,&next,&tilesButton,&keyboardButton,
@@ -510,7 +510,7 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
     {
         stopAll(); heldKeys.clear(); keyboardArmed = false;
         rawKeyboard.identify(false); rawKeyboard.enable(captureKeyboard.getToggleState());
-        captureKeyboard.setToggleState(rawKeyboard.enabled(), juce::dontSendNotification);
+        captureKeyboard.setToggleState(rawKeyboard.enabled() || rawKeyboard.activating(), juce::dontSendNotification);
         updateKeyboardStatus(); grabKeyboardFocus();
     };
     rawKeyboard.onKey = [this](const juce::String& key, bool down)
@@ -518,6 +518,14 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
         if (hasKeyboardFocus(true) && textEditorFocused() && !binding) { if (!down) handleKey(key, false); return; }
         if (down) lastKey.setText("Ultimo tasto: " + keyLabel(key) + "  /  " + key, juce::dontSendNotification);
         handleKey(key, down);
+    };
+    rawKeyboard.onCaptureStateChanged = [this]
+    {
+        const bool requested = rawKeyboard.enabled() || rawKeyboard.activating();
+        captureKeyboard.setToggleState(requested, juce::dontSendNotification);
+        if (!requested) { stopAll(); heldKeys.clear(); keyboardArmed = false; }
+        updateKeyboardStatus();
+        if (!requested && rawKeyboard.error().isNotEmpty()) setStatus(rawKeyboard.error(), true);
     };
     rawKeyboard.onIdentify = [this](const juce::String& id)
     {
@@ -601,6 +609,7 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
 }
 MainComponent::~MainComponent()
 {
+    rawKeyboard.onCaptureStateChanged = {};
     rawKeyboard.enable(false); rawKeyboard.onKey = {}; rawKeyboard.onIdentify = {}; rawKeyboard.onDevicesChanged = {};
     if (scanCancelled) scanCancelled->store(true);
     folderLoader.removeAllJobs(true, -1);
@@ -1016,13 +1025,18 @@ void MainComponent::refreshKeyboards()
 void MainComponent::updateKeyboardStatus()
 {
     const bool active = rawKeyboard.enabled();
+    const bool pending = rawKeyboard.activating();
     const bool selected = keyboardDevice.getSelectedId() > 0;
     identifyKeyboard.setButtonText(rawKeyboard.identifying() ? "Annulla riconoscimento" : "Riconosci con F12");
     captureKeyboard.setEnabled(rawKeyboardReady && selected);
-    inputStatus.setText(juce::String(active ? "TASTIERA DEDICATA\nAttiva anche in secondo piano" : "COMANDI LOCALI\nApp in primo piano") + "\n\nEsc: stop / " + keyLabel(library.djStopKey) + ": DJ", juce::dontSendNotification);
+    inputStatus.setText(juce::String(active ? "TASTIERA DEDICATA\nTasti bloccati nelle altre app" : pending ? "TASTIERA DEDICATA\nCollegamento in corso" : "COMANDI LOCALI\nApp in primo piano") + "\n\nEsc: stop / " + keyLabel(library.djStopKey) + ": DJ", juce::dontSendNotification);
     inputStatus.setColour(juce::Label::textColourId, active ? palette::accent : palette::muted);
-    keyboardStatus.setText(active ? "Attiva: solo la tastiera selezionata avvia i suoni, anche in secondo piano." : selected ? "Tastiera selezionata. Rilascia i tasti e attivala per usarla in secondo piano." : "Scegli una tastiera oppure usa Riconosci con F12.", juce::dontSendNotification);
-    keyboardStatus.setColour(juce::Label::textColourId, active ? palette::accent : palette::muted);
+    keyboardStatus.setText(active ? "Attiva: i tasti selezionati controllano DualDeck e sono bloccati nelle altre app."
+        : pending ? "Collegamento in corso. Mantieni rilasciati i tasti; puoi annullare con l'interruttore."
+        : rawKeyboard.error().isNotEmpty() ? rawKeyboard.error()
+        : selected ? "Tastiera selezionata. Rilascia tutti i tasti e attivala per bloccarli nelle altre app."
+        : "Scegli una tastiera oppure usa Riconosci con F12.", juce::dontSendNotification);
+    keyboardStatus.setColour(juce::Label::textColourId, active ? palette::accent : rawKeyboard.error().isNotEmpty() ? palette::warning : palette::muted);
 }
 void MainComponent::replaceAudioFile()
 {

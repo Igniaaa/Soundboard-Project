@@ -155,7 +155,7 @@ bool MainComponent::textEditorFocused() const
 bool MainComponent::keyPressed(const juce::KeyPress&, juce::Component*) { return false; }
 bool MainComponent::keyStateChanged(bool, juce::Component*)
 {
-    if (rawKeyboard.enabled() || rawKeyboard.identifying()) return false;
+    if (rawKeyboard.enabled() || rawKeyboard.activating() || rawKeyboard.identifying()) return false;
     if (!hasKeyboardFocus(true) || (textEditorFocused() && !binding))
     {
         for (const auto& key : heldKeys) handleKey(key, false);

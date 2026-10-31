@@ -8,6 +8,7 @@
 /test-output/
 /backups/
 /old-builds/
+/keyboard-runtime/
 /*.exe
 /build-log.txt
 /test-log.txt
@@ -25,3 +26,4 @@ __pycache__/
 *.pyc
 docs/superpowers/plans/2026-10-29-scrub-audio-review-consolidation.md
 /Tests
+/docs/superpowers

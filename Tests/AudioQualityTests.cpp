@@ -134,17 +134,78 @@ int main()
     require(core->activeVoices() == 0 && std::abs(ended.back()) < 0.0001f,
             "an extended delay tail still terminates and releases the voice");
 
+    // A short overload must not keep an unrelated pad ducked for hundreds of
+    // milliseconds. Exercise both repeated and distinct pads, real voice mixing,
+    // sample rates and block boundaries instead of a mocked gain envelope.
+    for (const int outputRate : {44100, 48000, 96000, 192000})
+    for (const bool samePad : {false, true})
+    {
+        ClipData hit, bed;
+        hit.sampleRate = bed.sampleRate = outputRate;
+        const int count = outputRate / 2, hitEnd = outputRate / 100;
+        hit.samples.resize(count * 2);
+        bed.samples.resize(count * 2);
+        for (int i = 0; i < count; ++i)
+        {
+            bed.samples[2 * i] = 0.2f;
+            bed.samples[2 * i + 1] = -0.14f;
+            if (i < hitEnd)
+            {
+                hit.samples[2 * i] = 0.8f;
+                hit.samples[2 * i + 1] = -0.56f;
+            }
+        }
+        std::vector<float> reference;
+        for (const int blockSize : {64, 512})
+        {
+            auto mix = std::make_unique<AudioCore>();
+            mix->setVolume(1); mix->prepare(outputRate);
+            VoiceSettings settings; settings.mode = PlayMode::overlap; settings.fadeOut = 0;
+            mix->trigger(1, &bed, settings);
+            for (int voice = 0; voice < 3; ++voice)
+                mix->trigger(samePad ? 2 : 2 + voice, &hit, settings);
+            std::vector<float> left(count), right(count);
+            for (int i = 0; i < count; i += blockSize)
+                mix->render(left.data() + i, right.data() + i, std::min(blockSize, count - i));
+            bool safe = true;
+            float stereoError = 0, largestRecoveryStep = 0;
+            for (int i = 0; i < count; ++i)
+            {
+                safe &= std::isfinite(left[i]) && std::isfinite(right[i])
+                    && std::max(std::abs(left[i]), std::abs(right[i])) <= 0.98001f;
+                stereoError = std::max(stereoError, std::abs(right[i] + 0.7f * left[i]));
+                if (i > hitEnd)
+                {
+                    safe &= left[i] >= left[i - 1] && left[i] <= 0.2f;
+                    largestRecoveryStep = std::max(largestRecoveryStep, left[i] - left[i - 1]);
+                }
+            }
+            std::cout << "mix recovery rate=" << outputRate << " same-pad=" << samePad
+                      << " block=" << blockSize << " at50ms=" << left[outputRate / 20]
+                      << " at100ms=" << left[outputRate / 10]
+                      << " at200ms=" << left[outputRate / 5] << '\n';
+            require(safe && stereoError < 0.000001f && largestRecoveryStep < 0.0002f,
+                    "transient overload stays bounded and recovers smoothly with stereo preserved");
+            require(left[outputRate / 20] > 0.11f && left[outputRate / 10] > 0.17f
+                        && left[outputRate / 5] > 0.195f,
+                    "a short loud overlap releases its attenuation promptly on the surviving pad");
+            if (reference.empty()) reference = left;
+            else require(left == reference, "mix recovery is independent of callback block size");
+        }
+    }
+
     // A limiter that recovers between each pair of bass peaks modulates the
     // gain within the waveform and adds harmonics even after settling. Exercise
     // the real final mixer (including microphone input), with no mocked DSP.
     core->resetAfterDeviceStop();
+    for (const double bassHz : {20.0, 25.0, 50.0})
     for (int outputRate : {44100, 48000, 96000, 192000})
     {
         core->prepare(outputRate);
         std::vector<float> left(outputRate), right(outputRate), micL(outputRate), micR(outputRate);
         for (int i = 0; i < outputRate; ++i)
         {
-            micL[i] = static_cast<float>(2 * std::sin(freeze_test::tau * 50 * i / outputRate));
+            micL[i] = static_cast<float>(2 * std::sin(freeze_test::tau * bassHz * i / outputRate));
             micR[i] = -0.7f * micL[i];
         }
         for (int i = 0; i < outputRate; i += 128)
@@ -160,19 +221,19 @@ int main()
             peak = std::max(peak, std::max(std::abs(left[i]), std::abs(right[i])));
             stereoError = std::max(stereoError, std::abs(right[i] + 0.7f * left[i]));
             if (i < first) continue;
-            sine += left[i] * std::sin(freeze_test::tau * 50 * i / outputRate);
-            cosine += left[i] * std::cos(freeze_test::tau * 50 * i / outputRate);
+            sine += left[i] * std::sin(freeze_test::tau * bassHz * i / outputRate);
+            cosine += left[i] * std::cos(freeze_test::tau * bassHz * i / outputRate);
             power += left[i] * left[i];
         }
         sine *= 2.0 / length; cosine *= 2.0 / length;
         for (int i = first; i < outputRate; ++i)
         {
-            const double predicted = sine * std::sin(freeze_test::tau * 50 * i / outputRate)
-                                   + cosine * std::cos(freeze_test::tau * 50 * i / outputRate);
+            const double predicted = sine * std::sin(freeze_test::tau * bassHz * i / outputRate)
+                                   + cosine * std::cos(freeze_test::tau * bassHz * i / outputRate);
             residual += (left[i] - predicted) * (left[i] - predicted);
         }
         const double distortion = std::sqrt(residual / power);
-        std::cout << "limiter rate=" << outputRate << " peak=" << peak
+        std::cout << "limiter rate=" << outputRate << " bassHz=" << bassHz << " peak=" << peak
                   << " fundamentalResidual=" << distortion << " stereoError=" << stereoError << '\n';
         require(finite && peak <= 0.98001f && stereoError < 0.000001f,
                 "overload protection limits stereo peaks with one shared gain");

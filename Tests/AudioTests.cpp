@@ -564,22 +564,38 @@ int main()
     balancedSpam.trigger(1, &longClip, spamSettings);
     balancedSpam.trigger(1, &longClip, spamSettings);
     balancedSpam.render(left, right, 300);
-    require(balancedSpam.activeVoices() == 2 && std::abs(left[299] - 0.2f) < 0.01f,
-            "same-pad spam keeps both copies near one copy's level");
+    require(balancedSpam.activeVoices() == 2 && std::abs(left[299] - 0.2f * std::sqrt(2.0f)) < 0.01f,
+            "two coherent copies retain a moderate loudness increase with half-strength balancing");
     balancedSpam.trigger(1, &longClip, spamSettings);
     balancedSpam.render(left, right, 300);
-    require(balancedSpam.activeVoices() == 3 && std::abs(left[299] - 0.2f) < 0.01f,
-            "repeated spam retains every copy without accumulating loudness");
+    require(balancedSpam.activeVoices() == 3 && std::abs(left[299] - 0.2f * std::sqrt(3.0f)) < 0.01f,
+            "three coherent copies retain every voice without full level normalisation");
     auto separatePad = constant(20000, 0.1f);
     balancedSpam.trigger(2, &separatePad, spamSettings);
     balancedSpam.render(left, right, 300);
-    require(std::abs(left[299] - 0.3f) < 0.01f,
+    require(std::abs(left[299] - (0.2f * std::sqrt(3.0f) + 0.1f)) < 0.01f,
             "balancing one pad leaves another pad's level independent");
     balancedSpam.stop(); balancedSpam.render(left, right, 1);
     balancedSpam.trigger(1, &longClip, spamSettings);
     balancedSpam.render(left, right, 300);
     require(balancedSpam.activeVoices() == 1 && std::abs(left[299] - 0.2f) < 0.0001f,
             "stop resets same-pad balancing before the next playback");
+    balancedSpam.stop(); balancedSpam.render(left, right, 1);
+    auto shortCopy = constant(100, 0.2f);
+    balancedSpam.trigger(1, &longClip, spamSettings);
+    balancedSpam.trigger(1, &shortCopy, spamSettings);
+    balancedSpam.render(left, right, 100);
+    balancedSpam.render(left, right, 50);
+    require(balancedSpam.activeVoices() == 1 && left[49] > 0.195f && left[49] <= 0.2f,
+            "a surviving copy recovers its own level promptly without stale overlap energy");
+    balancedSpam.stop(); balancedSpam.render(left, right, 1);
+    auto quietCopies = constant(20000, 0.02f);
+    for (int copy = 0; copy < 32; ++copy) balancedSpam.trigger(1, &quietCopies, spamSettings);
+    balancedSpam.render(left, right, 300);
+    require(balancedSpam.activeVoices() == 32
+                && std::abs(left[299] - 0.02f * std::sqrt(32.0f)) < 0.002f,
+            "many quiet copies retain bounded loudness without collapsing to a single copy");
+    balancedSpam.stop(); balancedSpam.render(left, right, 1);
     AudioCore cancellingSpam;
     cancellingSpam.setVolume(1); cancellingSpam.prepare(1000);
     auto positive = constant(100, 0.2f), negative = constant(50, -0.2f);

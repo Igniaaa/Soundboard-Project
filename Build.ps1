@@ -1,6 +1,9 @@
-param([switch]$SkipTests, [string]$ToolRoot = $PSScriptRoot)
+param([switch]$SkipTests, [string]$ToolRoot = $PSScriptRoot, [string]$OutputName = '')
 $ErrorActionPreference = 'Stop'
 $taskRoot = $PSScriptRoot
+if ($OutputName -and ([System.IO.Path]::GetFileName($OutputName) -ne $OutputName -or [System.IO.Path]::GetExtension($OutputName) -ne '.exe')) {
+    throw 'OutputName deve essere un nome di file .exe senza cartelle.'
+}
 $taskCmake = Join-Path $ToolRoot 'tools\cmake-4.4.4-windows-x86_64\bin\cmake.exe'
 $taskCtest = Join-Path $ToolRoot 'tools\cmake-4.4.4-windows-x86_64\bin\ctest.exe'
 $taskMsvcRoot = Join-Path $ToolRoot 'tools\msvc'
@@ -37,6 +40,12 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Test audio non superati.' }
     }
     $taskBinary = Join-Path $taskRoot 'build-msvc\bin\DualDeckJuce.exe'
+    if ($OutputName) {
+        $taskTrial = Join-Path $taskRoot $OutputName
+        Copy-Item -LiteralPath $taskBinary -Destination $taskTrial -Force
+        Write-Output ('Build di prova pronta: ' + $taskTrial)
+        return
+    }
     $taskVersioned = Join-Path $taskRoot 'DualDeckJuce-0.7.exe'
     Copy-Item -LiteralPath $taskBinary -Destination $taskVersioned -Force
     try { Copy-Item -LiteralPath $taskBinary -Destination (Join-Path $taskRoot 'DualDeckJuce.exe') -Force }

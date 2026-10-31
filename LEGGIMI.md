@@ -1,10 +1,22 @@
 # DualDeck — JUCE Edition 0.7
 
-## Build di revisione audio — 27 ottobre 2026
+## Mix meno attenuato — 30 ottobre 2026
 
-Per provare le ultime correzioni, chiudi l'app precedente e avvia
-**DualDeckJuce-0.7.exe**, aggiornato dalla compilazione finale. La copia
-**DualDeckJuce-0.7-audio-review.exe** è identica e usa gli stessi dati.
+Il bilanciamento delle copie meno aggressivo e il recupero più rapido
+dopo i picchi sono approvati all'ascolto dall'utente. Avvia
+**DualDeckJuce-0.7.exe** oppure **DualDeckJuce.exe**: entrambe le copie
+sono aggiornate e identiche alla copia provata
+**old-builds/DualDeckJuce-0.7-clean-mix.exe**.
+Il freeze approvato è invariato; la copia
+**old-builds/DualDeckJuce-0.7-freeze-range.exe** resta il riferimento precedente.
+Dopo ogni approvazione, le copie di prova vengono spostate in `old-builds`;
+in radice restano i due eseguibili principali della versione approvata.
+Dettagli e limiti in [VERIFICHE-AUDIO-REVIEW.md](VERIFICHE-AUDIO-REVIEW.md).
+
+## Revisione audio — 27 ottobre 2026 (storico)
+
+La copia **DualDeckJuce-0.7-audio-review.exe** è conservata in `old-builds`
+e usa gli stessi dati delle versioni successive.
 Delay, ping-pong e riverbero mantengono il livello del suono diretto anche
 al 100% di mix: il mix aggiunge le code senza dimezzare l'attacco.
 La stabilizzazione del feedback rimane; quando la somma è troppo forte
@@ -103,11 +115,17 @@ La scansione non segue collegamenti simbolici e si ferma a 100.000 audio o 1.000
 
 ## Tastiera dedicata
 
-Apri **Tastiera dedicata**, premi **Riconosci con F12**, quindi premi e rilascia F12 sul dispositivo da usare. Rilascia tutti i tasti e attiva l'interruttore. Puoi associare i suoni dalla soundboard e usarli mentre un'altra applicazione è in primo piano. Per tornare ai comandi locali, disattiva l'interruttore.
+La versione approvata **`DualDeckJuce-0.7.exe`** (anche `DualDeckJuce.exe`) include il blocco della tastiera dedicata. Mantieni la cartella `keyboard-runtime` accanto agli eseguibili. Usa Interception già installato su questo PC; non installa o modifica driver. Il funzionamento è stato confermato dall'utente dopo la correzione dell'avvio.
 
-La modalità usa Windows Raw Input e **non blocca i tasti nelle altre applicazioni**: i tasti possono ancora scrivere o attivare comandi nel gioco. Non installa driver. La tastiera principale non avvia i suoni mentre la modalità dedicata è attiva. Nei campi di testo di DualDeck i comandi sono sospesi, salvo durante l'associazione. F12 è riservato al riconoscimento per le nuove associazioni.
+Apri la versione approvata. Nella scheda **Tastiera dedicata**, premi **Riconosci con F12**, quindi premi e rilascia F12 sul dispositivo da dedicare ai suoni. Rilascia tutti i tasti e attiva l'interruttore. Attendi lo stato attivo prima di provare i pad con un'altra applicazione in primo piano.
 
-Riferimento tecnico: [Microsoft — RAWINPUTDEVICE / RIDEV_INPUTSINK](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-rawinputdevice).
+Per verificare una nuova selezione, controlla che i tasti dedicati avviino i pad senza scrivere nel Blocco note, mentre la tastiera principale continua a scrivere normalmente. Disattiva l'interruttore e verifica che anche quella dedicata torni a scrivere.
+
+Identificazione non univoca, libreria assente, cambio dispositivi o errore interrompono la cattura e richiedono una nuova attivazione manuale. Un processo separato rilascia il filtro se l'interfaccia non risponde per circa 1,5 secondi. Se l'interfaccia resta bloccata, i suoni già in riproduzione vengono fermati quando essa riprende; il rilascio della tastiera non dipende da questa ripresa.
+
+Nei campi di testo di DualDeck i comandi sono sospesi, salvo durante l'associazione. F12 è riservato al riconoscimento per le nuove associazioni. Per tornare ai comandi locali, disattiva l'interruttore.
+
+Dettagli, verifiche e limiti: [TASTIERA-BLOCCO.md](TASTIERA-BLOCCO.md).
 
 ## Funzioni di questa versione
 
@@ -145,9 +163,9 @@ Le due uscite usano callback e clock separati. Il motore riproduce gli stessi co
 
 Decodifica in sottofondo, durata massima 3 minuti per file e cache PCM LRU da 384 MiB. La cache espelle il clip meno usato che non è trattenuto da una voce o da un comando audio in coda; i riferimenti vengono rilasciati dal callback audio, senza liberare memoria nel thread audio. I primi sei pad visibili vengono precaricati in background. La prima pressione su un file non ancora caricato attende la decodifica; ulteriori pressioni durante quel caricamento vengono accorpate. Se tutti i clip in memoria sono ancora in uso, l'app chiede di fermare i suoni e riprovare. Lo stop rende espellibili le voci al successivo callback audio; un loop rilasciato prima del caricamento non parte in ritardo.
 
-Il mixer usa una coda di comandi e un numero fisso di voci; il callback non alloca memoria e non prende mutex. In Spam, il livello delle copie dello stesso pad viene bilanciato verso quello della copia più forte, con una transizione breve; pad diversi non vengono normalizzati insieme. Il limiter finale protegge i picchi del mix complessivo. Le copie in opposizione di fase possono ancora cancellarsi completamente.
+Il mixer usa una coda di comandi e un numero fisso di voci; il callback non alloca memoria e non prende mutex. In Spam, il livello delle copie dello stesso pad viene bilanciato con metà compensazione in decibel, lasciando un aumento moderato del volume: due copie coerenti risultano circa 1,41 volte una copia, tre circa 1,73 volte, prima del limiter. La transizione resta breve e una copia superstite recupera il proprio livello; pad diversi non vengono normalizzati insieme. Il limiter finale protegge i picchi del mix complessivo. Le copie in opposizione di fase possono ancora cancellarsi completamente.
 
-Non sono ancora presenti: blocco della tastiera secondaria verso altre applicazioni, pitch indipendente, registrazione su file, timeline, piano, azioni OBS, esportazione/importazione ZIP, sincronizzazione cloud e menu nell'area di notifica.
+Il blocco della tastiera secondaria è incluso nella versione approvata e richiede Interception già installato. Non sono ancora presenti: pitch indipendente, registrazione su file, timeline, piano, azioni OBS, esportazione/importazione ZIP, sincronizzazione cloud e menu nell'area di notifica.
 
 ## Compilazione e verifiche
 
@@ -180,7 +198,7 @@ Su una nuova copia dei sorgenti esegui prima `Setup.ps1` (Python 3 richiesto): s
 - `Tests/LibraryFeatureTests.cpp`: cartelle, duplicati, file mancanti, ordinamenti, cancellazione scansioni e rimozione profili.
 - `Tests/KeyboardIsolationProbe.cpp`: confronto sperimentale fra Raw Input e hook, senza blocco dei tasti.
 
-Le prossime tappe sono la verifica udibile del microfono, il test fisico delle interazioni accessibili e un filtro per dispositivo se si vuole bloccare la tastiera secondaria nelle altre applicazioni. Timeline e piano vengono dopo il consolidamento di questa base.
+Le prossime tappe sono le ulteriori prove di recupero della tastiera dopo crash e riavvio, la verifica udibile del microfono e il test fisico delle interazioni accessibili. Timeline e piano vengono dopo il consolidamento di questa base.
 
 ## Licenze e provenienza
 

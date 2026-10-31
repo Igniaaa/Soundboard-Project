@@ -1,5 +1,88 @@
 # Revisione audio dopo il riscontro dell'utente — 27 ottobre 2026
 
+## Mix approvato all'ascolto — 30 ottobre 2026
+
+Dopo aver provato `DualDeckJuce-0.7-clean-mix.exe`, l'utente conferma:
+«Bene funziona benissimo». Questa è la nuova versione di riferimento
+approvata per il mix, con il freeze precedentemente approvato conservato.
+Aggiornate anche `DualDeckJuce-0.7.exe` e `DualDeckJuce.exe`, ora identiche
+alla copia provata: SHA-256
+`FC8276F8BA2F98788E09842B54C6581A55015B38F50164499B649F37DEDFFEE5`.
+Su richiesta dell'utente, le copie di prova `DualDeckJuce-0.7-clean-mix.exe`
+e `DualDeckJuce-0.7-freeze-range.exe` sono poi state spostate in `old-builds`,
+verificandone gli hash. In radice restano i due eseguibili approvati.
+Questa archiviazione va ripetuta dopo ogni futura approvazione, come
+registrato in `AGENTS.md`; `old-builds` resta esclusa da Git.
+Nessun processo è stato chiuso. Il riscontro riguarda l'uso provato;
+non specifica tutti i file, dispositivi o buffer. La registrazione e la
+copia degli eseguibili non modificano il codice né introducono nuovi test.
+
+## Mix meno attenuato, opzione audio pulito — 30 ottobre 2026
+
+L'utente conferma che più pad insieme funzionano, ma segnala una riduzione
+di volume eccessiva sia con pad diversi sia ripetendo lo stesso pad.
+Ha scelto «Audio pulito»: bilanciamento meno aggressivo e recupero più
+rapido, conservando la protezione finale. La tastiera viene riconosciuta
+ma continua a inviare i tasti alle altre applicazioni, come già documentato
+in `TASTIERA-BLOCCO.md`; nessuna modifica a quella funzione in questa build.
+
+Il bilanciamento delle copie applica metà della compensazione precedente
+in dB. Con copie costanti coerenti a 0,2, due copie si stabilizzano a circa
+0,283 e tre a 0,346, anziché riportare sempre il gruppo a 0,2. I pad diversi
+continuano a sommarsi senza bilanciamento comune prima del limiter.
+Quando resta una sola copia, il target del gruppo torna direttamente a
+uno con la transizione esistente di 10 ms, senza seguire l'energia delle
+copie ormai terminate. I boost da cancellazione parziale sono ancora
+rimossi immediatamente quando resta una sola copia.
+
+Il limiter stereo resta a 0,98, senza nuova saturazione o lookahead.
+Il recupero ha costante di tempo 40 ms invece di 100 ms; il mantenimento
+passa da 20 a 25 ms per coprire i semiperiodi a 20 Hz. La riduzione
+necessaria durante una somma forte continua rimane: questi interventi
+riducono il bilanciamento aggiuntivo e il tempo del calo dopo il picco.
+
+Probe sul motore reale a 48 kHz: tre impulsi di 10 ms a 0,8 sopra un pad
+costante a 0,2. Il tempo è misurato dall'inizio degli impulsi:
+
+| Caso | Tempo | Prima | Dopo |
+| --- | --- | ---: | ---: |
+| Pad diversi | 50 ms | 0,09799 | 0,11440 |
+| Pad diversi | 100 ms | 0,13813 | 0,17548 |
+| Pad diversi | 200 ms | 0,17724 | 0,19799 |
+| Copie dello stesso pad | 50 ms | 0,10775 | 0,13330 |
+| Copie dello stesso pad | 100 ms | 0,14405 | 0,18089 |
+| Copie dello stesso pad | 200 ms | 0,17942 | 0,19843 |
+
+**Verifiche:** baseline con cinque suite superate; prima della modifica
+i nuovi controlli falliscono sui livelli delle copie e sul recupero a
+50/100/200 ms. Dopo la modifica tutte le cinque suite CTest passano:
+554 controlli audio, 192 di time stretching, 151 di qualità audio,
+32 del riverbero e 16 della tastiera. Le prove di recupero includono
+44,1/48/96/192 kHz, pad distinti e copie, blocchi da 64/512 campioni con
+uscite identiche, recupero monotono e continuo, picchi finiti entro 0,98
+e rapporto stereo conservato. Le sinusoidi stabili in sovraccarico a
+20/25/50 Hz mantengono residuo rispetto alla fondamentale circa 3e-8.
+Verificati anche 32 copie deboli, recupero della copia superstite,
+cancellazione perfetta e i precedenti controlli su effetti e freeze.
+I sorgenti `SpectralScrub.h` e `PhantomScrub.h` sono invariati.
+Revisione indipendente senza rilievi.
+
+Compilazione e test completati; `Build.ps1` si è poi fermato sulla copia
+finale perché `DualDeckJuce-0.7.exe` era aperto. Nessun processo è stato
+chiuso. I nomi standard rimangono alla versione precedente; è disponibile
+`DualDeckJuce-0.7-clean-mix.exe`, identico a `build-msvc/bin/DualDeckJuce.exe`,
+SHA-256 `FC8276F8BA2F98788E09842B54C6581A55015B38F50164499B649F37DEDFFEE5`.
+Chiudere l'app precedente prima di avviare questa copia, che usa gli
+stessi dati. Il riferimento approvato `DualDeckJuce-0.7-freeze-range.exe`
+è conservato; backup dei sorgenti precedenti in
+`backups/clean-mix-2026-10-30/`.
+
+Log prima/dopo e probe in `test-output/clean-mix/`; script del probe in
+`test-output/mix-level-probe/Probe.ps1`. Design e piano in `docs/superpowers`.
+Nessun commit o push automatico. La successiva conferma d'ascolto e
+l'aggiornamento dei nomi standard sono registrati sopra. I test sintetici
+non certificano assenza di distorsione su ogni segnale o dispositivo.
+
 ## Prima eco del delay a volume pieno — ultima revisione
 
 L'utente segnala una seconda copia a volume originale dopo il tempo del

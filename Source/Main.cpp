@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "KeyboardBridge.h"
 #if JUCE_WINDOWS
  #include <windows.h>
  #include <dwmapi.h>
@@ -58,6 +59,7 @@ public:
     {
         const auto command = getCommandLineParameters();
         return command.contains("--self-test") || command.contains("--audio-smoke")
+            || command.contains("--keyboard-broker") || command.contains("--keyboard-driver-status")
             || command.contains("--keyboard-smoke") || command.contains("--smoke-test")
             || command.contains("--performance-test") || command.contains("--interaction-smoke")
             || command.contains("--ui-editor-snapshot");
@@ -66,6 +68,25 @@ public:
     {
         auto args = juce::StringArray::fromTokens(commandLine, true); args.removeEmptyStrings();
         for (auto& arg : args) arg = arg.unquoted();
+        if (args.size() > 0 && args[0] == "--keyboard-broker")
+        {
+            const int result = args.size() == 4
+                ? runKeyboardBroker(static_cast<std::uintptr_t>(args[1].getLargeIntValue()),
+                                    static_cast<std::uintptr_t>(args[2].getLargeIntValue()),
+                                    juce::File(args[3]))
+                : 2;
+            setApplicationReturnValue(result); quit(); return;
+        }
+        if (args.size() > 0 && args[0] == "--keyboard-driver-status")
+        {
+            const auto destination = args.size() > 1 ? juce::File(args[1])
+                : findProjectRoot().getChildFile("test-output/keyboard-driver-status.json");
+            destination.getParentDirectory().createDirectory();
+            const auto result = writeKeyboardDriverStatus(KeyboardBridge::runtimeLibrary(), destination);
+            if (result.failed() && !destination.existsAsFile())
+                destination.replaceWithText(result.getErrorMessage());
+            setApplicationReturnValue(result.wasOk() ? 0 : 1); quit(); return;
+        }
         if (args.contains("--self-test"))
         {
             auto root = findProjectRoot();

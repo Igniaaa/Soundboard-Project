@@ -235,8 +235,8 @@ public:
         const float wantedVolume = targetVolume.load();
         const double wantedPitch = targetPitch.load();
         const float smooth = static_cast<float>(1.0 - std::exp(-1.0 / (0.01 * sampleRate)));
-        const float recovery = static_cast<float>(1.0 - std::exp(-1.0 / (0.10 * sampleRate)));
-        const int limiterHoldLength = std::max(1, static_cast<int>(std::ceil(0.02 * sampleRate)));
+        const float recovery = static_cast<float>(1.0 - std::exp(-1.0 / (0.04 * sampleRate)));
+        const int limiterHoldLength = std::max(1, static_cast<int>(std::ceil(0.025 * sampleRate)));
         const float energySmooth = static_cast<float>(1.0 - std::exp(-1.0 / (0.02 * sampleRate)));
         const float balanceSmooth = smooth;
         double scrubTarget = scrubTargetSeconds.load(std::memory_order_relaxed);
@@ -459,9 +459,13 @@ public:
                     const double mixedPower = 0.5 * (current.sumL * current.sumL + current.sumR * current.sumR);
                     current.targetPower += (current.loudestPower - current.targetPower) * energySmooth;
                     current.mixedPower += (mixedPower - current.mixedPower) * energySmooth;
-                    const float wanted = current.targetPower > 1.0e-8f
+                    const float fullCompensation = current.targetPower > 1.0e-8f
                         ? static_cast<float>(std::clamp(std::sqrt(current.targetPower / std::max(current.mixedPower, 1.0e-8)),
                                                         1.0 / maxVoices, 3.0)) : 1.0f;
+                    // Half the compensation in dB lets repeated copies build
+                    // some loudness instead of flattening them to one voice.
+                    // A lone survivor no longer follows old overlap energy.
+                    const float wanted = current.contributors <= 1 ? 1.0f : std::sqrt(fullCompensation);
                     current.gain += (wanted - current.gain) * balanceSmooth;
                     if (current.contributors <= 1 && std::abs(current.gain - 1.0f) < 0.0001f)
                     {
@@ -483,6 +487,7 @@ public:
             const float p = std::max(std::abs(l), std::abs(r));
             const float required = p > 0.98f ? 0.98f / p : 1.0f;
             if (required < limiterGain) limiterGain = required;
+            // Hold for a full half-cycle at 20 Hz before the faster recovery.
             // Keep the gain steady between bass peaks. A tolerance of 0.1%
             // also catches peaks that fall between samples on later cycles.
             // Release only after the overload has actually subsided, rather

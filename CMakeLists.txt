@@ -24,7 +24,7 @@ set(JUCE_MODULES_ONLY ON CACHE BOOL "" FORCE)
 add_subdirectory("${JUCE_DIR}" juce)
 
 add_executable(DualDeckJuce WIN32
-    Source/Main.cpp Source/Library.cpp Source/LibraryCatalog.cpp Source/LibraryWorkflow.cpp Source/AudioEngine.cpp Source/WindowsDecoder.cpp Source/MainComponent.cpp Source/PadPlayback.cpp Source/PadEditor.cpp Source/RawKeyboard.cpp Tests/LibraryFeatureTests.cpp)
+    Source/Main.cpp Source/Library.cpp Source/LibraryCatalog.cpp Source/LibraryWorkflow.cpp Source/AudioEngine.cpp Source/WindowsDecoder.cpp Source/MainComponent.cpp Source/PadPlayback.cpp Source/PadEditor.cpp Source/RawKeyboard.cpp Source/KeyboardBridge.cpp Tests/LibraryFeatureTests.cpp)
 if(DUALDECK_UI_EDITOR)
     target_sources(DualDeckJuce PRIVATE Source/UiLayoutEditor.cpp)
     target_compile_definitions(DualDeckJuce PRIVATE DUALDECK_UI_EDITOR=1)
@@ -37,7 +37,13 @@ if(WIN32)
     target_sources(DualDeckJuce PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/AppIcon.rc")
     set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/AppIcon.rc" APPEND PROPERTY
         OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Assets/DualDeck.ico")
-    target_link_libraries(DualDeckJuce PRIVATE dwmapi)
+    target_link_libraries(DualDeckJuce PRIVATE dwmapi setupapi bcrypt)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/keyboard-runtime/interception.dll")
+        add_custom_command(TARGET DualDeckJuce POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/keyboard-runtime"
+                "$<TARGET_FILE_DIR:DualDeckJuce>/keyboard-runtime")
+    endif()
 endif()
 target_compile_definitions(DualDeckJuce PRIVATE
     JUCE_STANDALONE_APPLICATION=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
@@ -88,6 +94,15 @@ if(BUILD_TESTING)
     add_executable(DualDeckKeyboardTests Tests/KeyboardTests.cpp)
     target_include_directories(DualDeckKeyboardTests PRIVATE Source)
     add_test(NAME keyboard_filter COMMAND DualDeckKeyboardTests)
+    if(WIN32)
+        add_executable(DualDeckKeyboardBridgeTests Source/KeyboardBridgeTests.cpp)
+        target_include_directories(DualDeckKeyboardBridgeTests PRIVATE Source)
+        if(MSVC)
+            target_compile_options(DualDeckKeyboardBridgeTests PRIVATE /W4 /utf-8)
+            set_property(TARGET DualDeckKeyboardBridgeTests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        endif()
+        add_test(NAME keyboard_bridge COMMAND DualDeckKeyboardBridgeTests)
+    endif()
     if(MSVC)
         set_property(TARGET DualDeckAudioTests DualDeckKeyboardTests DualDeckScrubTimeStretchTests DualDeckAudioQualityTests DualDeckReverbTests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         target_link_options(DualDeckAudioTests PRIVATE /STACK:16777216)
