@@ -1,31 +1,47 @@
-# DualDeck — JUCE Edition
+# DualDeck — anteprima open source 1.0.0-rc1
 
 Soundboard nativa C++17/JUCE per Windows x64, con profili, cartelle audio
 collegate, pad, tastiera dedicata, uscite principale e cuffie, mix microfono,
 editor della forma d'onda ed effetti per suono.
 
-Questa è una versione di sviluppo **0.7**. Scrub/freeze e qualità degli effetti
-sono ancora in revisione.
-La tastiera dedicata controlla i pad anche in secondo piano, ma non sopprime
-i propri tasti nelle altre applicazioni.
+**1.0.0-rc1 in preparazione**, sotto AGPL-3.0-only. La 1.0 stabile non è ancora
+pubblicata: restano prove fisiche, collaudo su altri PC e verifica dell'integrazione
+Interception. La tastiera dedicata può sopprimere i tasti nelle altre applicazioni
+tramite Interception esterno opzionale. DLL, driver e installer non sono inclusi
+nel pacchetto di anteprima; le normali funzioni soundboard non li richiedono.
+
+Per lo ZIP Windows vedere [Primo avvio](GETTING-STARTED.md).
+Il pacchetto comprende sorgenti corrispondenti, JUCE completo, licenze e hash.
 
 ## Compilazione su Windows
 
-Servono PowerShell, Python 3 e una connessione per il primo setup.
+Servono PowerShell, Python 3.10+, Visual Studio/Build Tools 2022 con C++ x64 e
+Windows SDK, e una connessione per il primo setup. Vedere [BUILDING.md](BUILDING.md).
 Da questa cartella:
 
 ```powershell
 ./Setup.ps1
-./Build.ps1
+./Build.ps1 -Toolchain Installed -NoPromote -SkipTests
 ./Test.ps1
+python -m unittest discover -s Tests -p test_release.py
 ```
 
 Il setup scarica JUCE 9.0.4 e gli strumenti portatili con verifica SHA-256.
-Per il compilatore Microsoft vengono presentati i termini della toolchain.
-La build esegue i test CTest e genera `DualDeckJuce-0.7.exe`.
+Il setup non installa compilatori o driver. La build genera
+`build-msvc/bin/DualDeckJuce.exe`; i test CTest sono eseguiti da Test.ps1.
+Le copie approvate rimangono invariate. La toolchain portatile già presente
+localmente resta utilizzabile, senza distribuire il precedente bootstrap.
 Al primo avvio collega le cartelle dei tuoi suoni e configura le uscite.
 
 ## Documentazione
+
+- [Compilazione e packaging](BUILDING.md)
+- [Contributi](CONTRIBUTING.md)
+- [Requisiti ancora aperti per 1.0](RELEASE-CHECKLIST.md)
+- [Novità](CHANGELOG.md)
+
+Il workflow GitHub verifica una checkout pulita e prepara artefatti di anteprima,
+senza installare driver, catturare tasti o pubblicare release automaticamente.
 
 - [Uso e funzioni](LEGGIMI.md)
 - [Architettura e sorgenti](DOCUMENTAZIONE-CODICE.md)
@@ -46,9 +62,7 @@ sono in `Assets` e devono essere inclusi nei commit.
 
 ## Licenze e provenienza
 
-Le note del progetto attribuiscono il codice originale di DualDeck alla
-licenza MIT. Questa copia non contiene ancora un file `LICENSE` del codice
-originale: recuperare il testo e gli avvisi di copyright dalla fonte prima
-di una pubblicazione pubblica. Non inventare autore o titolare dei diritti.
-Per JUCE e le relative dipendenze, vedere [JUCE-LICENSE.md](JUCE-LICENSE.md).
-La provenienza del bootstrap Microsoft è descritta in [LEGGIMI.md](LEGGIMI.md).
+Copyright (C) 2026 Alessandro Piermatteo. Codice originale sotto
+[GNU AGPL versione 3](LICENSE), senza garanzia. Vedere [ambito e provenienza](COPYRIGHT.md)
+e [avvisi delle dipendenze](THIRD-PARTY-NOTICES.md). JUCE e Interception conservano
+condizioni proprie; i driver Interception non sono presentati come open source.

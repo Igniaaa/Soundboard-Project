@@ -242,6 +242,8 @@ juce::String modeName(PlayMode mode)
 juce::File findProjectRoot()
 {
     auto directory = juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory();
+    // A packaged portable app owns its data even when extracted inside a checkout.
+    if (directory.getChildFile("BUILD-INFO.json").existsAsFile()) return directory;
     for (int i = 0; i < 7; ++i)
     {
         if (directory.getChildFile("CMakeLists.txt").existsAsFile() && directory.getChildFile("Source").isDirectory()) return directory;

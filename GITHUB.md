@@ -1,85 +1,27 @@
-# Preparare DualDeck per GitHub
+# Preparare il repository e la release
 
-La radice del repository è **questa cartella `juce-version`**, che contiene
-già `.git`. Non occorre inizializzare un altro repository nella cartella
-superiore `DualDeck-2`. Il ramo attuale è `main`. Al controllo finale del
-27 ottobre il remote `origin` è già collegato a
-`https://github.com/Igniaaa/Soundboard-Project.git` e il commit locale
-`2daa603` coincide con il riferimento locale `origin/main`.
+La radice Git è juce-version. La preparazione 1.0 è sul ramo
+release/1.0-preparation; non inizializzare un secondo repository in DualDeck-2.
 
-Per gli aggiornamenti successivi non occorre ricreare il repository:
+Includere Source, Tests (anche i nuovi test dello streaming), scripts, Assets,
+workflow .github, script PowerShell, VERSION e documenti di licenza/release.
+Tests non è più esclusa globalmente: nuovi test necessari non devono sparire
+da una checkout pulita.
 
-```powershell
-git status --short
-git diff
-git add .
-git commit -m "Update audio review documentation"
-git push origin main
-```
+Non includere data, sounds, deps, tools, build, dist, old-builds, backup o report
+locali. Gli archivi della distribuzione vengono generati separatamente da
+scripts/release.py, con una allowlist; Git non è il pacchetto binario.
 
-Usare un messaggio di commit che descriva le modifiche effettivamente
-presenti. Se `git status` non mostra modifiche, il commit non serve.
-Le istruzioni di prima pubblicazione sotto valgono per un repository nuovo.
+Prima di creare un commit esaminare git status --short e git diff. Per i nuovi
+file controllare esplicitamente il contenuto: non basta il diff dei file già
+tracciati. Vedere BUILDING.md per compilazione e verifiche, RELEASE-CHECKLIST.md
+per i requisiti ancora aperti e THIRD-PARTY-NOTICES.md per le dipendenze.
 
-## Cosa includere
+Il workflow Windows compila, verifica e prepara un'anteprima. Non crea tag o
+GitHub Release. L'esecuzione remota va verificata dopo aver caricato il ramo;
+il fatto che il file workflow esista non significa che sia già passato.
 
-Sorgenti in `Source`, test in `Tests`, risorse in `Assets`, gli script
-`scripts`, i file PowerShell, `CMakeLists.txt`, `.gitignore`, icone originali
-e documentazione. I nuovi file devono entrare nel prossimo commit: limitarsi
-ai file già tracciati lascerebbe fuori parti necessarie alla compilazione.
-
-Il `.gitignore` esclude build, strumenti, dipendenze scaricate, eseguibili,
-backup, report di prova, `data` e `sounds`. Non cancellare queste cartelle
-locali: Git le esclude senza rimuoverle dal PC. Per copiare manualmente i
-file tramite il sito di GitHub, queste esclusioni vanno rispettate a mano;
-conviene usare Git o GitHub Desktop.
-
-## Controllo prima del commit
-
-```powershell
-git status --short
-git add --dry-run .
-```
-
-Controllare l'elenco, inclusi nuovi sorgenti, test e `Assets/DualDeck.ico`.
-Per verificare perché un percorso personale viene escluso:
-
-```powershell
-git check-ignore data/library.json sounds/esempio.wav
-```
-
-Questa copia non contiene ancora il file `LICENSE` originale, pur citando
-MIT nelle note. Recuperare la licenza e gli avvisi originali prima di rendere
-pubblico il progetto; conservare anche `JUCE-LICENSE.md`.
-
-## GitHub Desktop
-
-1. Scegli **File → Add local repository** e seleziona `juce-version`.
-2. Esamina le modifiche e crea un commit con una descrizione del contenuto.
-3. Per questo repository usa **Push origin** per caricare nuovi commit.
-   **Publish repository** serve invece quando un repository non è ancora
-   collegato a GitHub; in quel caso scegli nome e visibilità.
-
-## Alternativa da terminale
-
-Dopo aver controllato i file, crea il commit locale:
-
-```powershell
-git add .
-git commit -m "Update DualDeck JUCE 0.7"
-```
-
-Sul sito GitHub crea un repository vuoto, senza generare README, licenza o
-gitignore. Copia l'URL effettivo, sostituisci il segnaposto e poi esegui:
-
-```powershell
-git remote add origin https://github.com/TUO-ACCOUNT/NOME-REPOSITORY.git
-git push -u origin main
-```
-
-Il push richiede l'autenticazione al tuo account. Se in seguito `origin`
-esiste già, controllalo con `git remote -v` prima di aggiungerlo di nuovo.
-La preparazione locale non crea né pubblica un repository su GitHub.
-
-Riferimenti: [guida ufficiale GitHub per un repository locale](https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github)
-e [documentazione Git sulle esclusioni](https://git-scm.com/docs/gitignore).
+Prima della pubblicazione stabile: risolvere i requisiti aperti, provare su un
+altro PC, confermare l'accettazione, controllare dati esclusi e sorgenti
+corrispondenti; solo allora preparare il tag 1.0.0 e gli allegati della release.
+La preparazione corrente non esegue commit, push o pubblicazione automatica.

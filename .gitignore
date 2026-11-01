@@ -25,5 +25,6 @@
 __pycache__/
 *.pyc
 docs/superpowers/plans/2026-10-29-scrub-audio-review-consolidation.md
-/Tests
 /docs/superpowers
+/dist/
+/build-release/

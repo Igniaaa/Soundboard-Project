@@ -62,7 +62,7 @@ class DualDeckApplication final : public juce::JUCEApplication
 {
 public:
     const juce::String getApplicationName() override { return "DualDeck JUCE"; }
-    const juce::String getApplicationVersion() override { return "0.7.0"; }
+    const juce::String getApplicationVersion() override { return DUALDECK_VERSION; }
     bool moreThanOneInstanceAllowed() override
     {
         const auto command = getCommandLineParameters();
@@ -222,11 +222,15 @@ public:
             report.add("DualDeck performance probe (milliseconds, this computer)");
             Library existing;
             const auto startLoad = juce::Time::getMillisecondCounterHiRes();
-            const auto loaded = existing.load(findProjectRoot().getChildFile("data/library.json"));
+            const auto libraryFile = findProjectRoot().getChildFile("data/library.json");
+            const bool hasLibrary = libraryFile.existsAsFile();
+            const auto loaded = hasLibrary ? existing.load(libraryFile) : juce::Result::ok();
+            if (!hasLibrary) report.add("Personal library: SKIP (clean installation); synthetic probes still run");
+            else if (loaded.failed()) report.add("Personal library: FAIL / " + loaded.getErrorMessage());
             report.add("Current library load: " + juce::String(juce::Time::getMillisecondCounterHiRes() - startLoad, 2)
                 + " ms / " + juce::String(existing.totalPads()) + " pads");
             int failures = loaded.failed() ? 1 : 0;
-            if (loaded.wasOk())
+            if (hasLibrary && loaded.wasOk())
             {
                 AudioEngine engine;
                 std::set<juce::String> seen;
