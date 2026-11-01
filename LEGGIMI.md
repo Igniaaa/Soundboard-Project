@@ -1,4 +1,11 @@
-# DualDeck — JUCE Edition 0.7
+# DualDeck — preparazione 1.0.0-rc1
+
+La candidata open source è descritta in [README.md](README.md),
+[GETTING-STARTED.md](GETTING-STARTED.md) e [BUILDING.md](BUILDING.md).
+Codice originale: Copyright (C) 2026 Alessandro Piermatteo, AGPL-3.0-only;
+vedere LICENSE, COPYRIGHT.md e THIRD-PARTY-NOTICES.md. Le sezioni cronologiche
+sotto conservano i riscontri della 0.7, che resta la versione locale approvata.
+Il pacchetto di anteprima non contiene DLL o driver Interception.
 
 ## Lettura durante la riproduzione — approvata il 1 novembre 2026
 
@@ -229,7 +236,9 @@ Il blocco della tastiera secondaria è incluso nella versione approvata e richie
 
 L'esito verificato della versione 0.7 è in [VERIFICHE-0.7.md](VERIFICHE-0.7.md). I rapporti [VERIFICHE-0.6.md](VERIFICHE-0.6.md) e [VERIFICHE-0.5.md](VERIFICHE-0.5.md) restano come cronologia.
 
-Gli strumenti sono portatili e già predisposti in `tools`. Non serve installare Visual Studio sul sistema.
+Sul PC di sviluppo restano utilizzabili gli strumenti portatili già in `tools`.
+Per una nuova checkout usare Visual Studio/Build Tools 2022 con C++ x64 e Windows
+SDK; vedere BUILDING.md. Setup non installa compilatori o driver.
 
 ```powershell
 .\Build.ps1
@@ -238,7 +247,9 @@ Gli strumenti sono portatili e già predisposti in `tools`. Non serve installare
 
 Per ricompilare questa copia usando gli strumenti portatili gia presenti nella cartella DualDeck adiacente, passa il percorso di quella cartella a `-ToolRoot` in entrambi gli script. I binari e i report vengono sempre scritti in questa copia.
 
-Su una nuova copia dei sorgenti esegui prima `Setup.ps1` (Python 3 richiesto): scarica JUCE, CMake, Ninja, Microsoft C++ e Windows SDK nelle cartelle del progetto. I pacchetti JUCE/CMake/Ninja sono fissati e verificati con SHA-256; i pacchetti Microsoft con gli hash dei manifest ufficiali. Lo script di preparazione mostra i termini Microsoft se non passi `-AcceptToolchainLicense`.
+Su una nuova copia eseguire Setup.ps1: scarica JUCE, CMake e Ninja nelle cartelle
+del progetto, con SHA-256 fissati. Compilatore Microsoft e Windows SDK vanno
+predisposti separatamente attraverso gli strumenti ufficiali Microsoft.
 
 `Test.ps1` verifica il DSP, il filtro dei tasti, gli effetti, il mix microfono, la libreria e le interazioni sintetiche dei pad. Decodifica un file esistente per formato presente nella libreria corrente, conta separatamente i riferimenti mancanti e salva le anteprime dell'interfaccia. Controlla la registrazione Raw Input senza attivare i comandi. Con `-AudioDevices` apre le uscite reali con il microfono silenziato nel test. Con `-Performance` misura anche una libreria sintetica fino a 50.000 pad. Non modifica la libreria dell'utente. L'ascolto della voce, la verifica fisica delle due tastiere e i lettori di schermo richiedono anche una prova manuale.
 
@@ -260,7 +271,13 @@ Le prossime tappe sono le ulteriori prove di recupero della tastiera dopo crash 
 
 ## Licenze e provenienza
 
-Il codice originale di DualDeck mantiene la licenza MIT del progetto. JUCE e le sue dipendenze hanno condizioni proprie: vedi `JUCE-LICENSE.md` e i sorgenti completi in `deps/JUCE-9.0.4`. Questa è una build di sviluppo locale con sorgenti disponibili; per un'eventuale distribuzione si applica la scelta fra AGPLv3 e licenza JUCE descritta nella documentazione ufficiale.
+La preparazione corrente usa AGPL-3.0-only per il codice originale: vedere
+LICENSE e COPYRIGHT.md per l'ambito e le precedenti citazioni MIT.
+JUCE e le sue dipendenze mantengono condizioni proprie, documentate in
+JUCE-LICENSE.md e THIRD-PARTY-NOTICES.md.
 
-Il bootstrap Microsoft in `scripts/portable-msvc.py` deriva da [mmozeiko/portable-msvc](https://gist.github.com/mmozeiko/7f3162ec2988e81e56d5c4e22cde9977), con un controllo locale sui percorsi di pulizia. Scarica i pacchetti Microsoft originali. SoundLord è il riferimento funzionale; questa app non ne incorpora codice, immagini o marchi.
+Il precedente bootstrap Microsoft derivato dal gist di mmozeiko è conservato
+solo nei backup locali e rimosso dalla preparazione distribuibile, perché non
+è stata trovata una licenza esplicita. SoundLord resta un riferimento funzionale;
+questa app non ne incorpora codice, immagini o marchi.
 

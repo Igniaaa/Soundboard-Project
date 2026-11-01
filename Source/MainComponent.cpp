@@ -665,7 +665,7 @@ void MainComponent::paint(juce::Graphics& g)
     g.setColour(palette::accent); g.fillRoundedRectangle(22, 25, 32, 32, 8);
     g.setColour(palette::background); g.setFont(font(19, true)); g.drawText("D", 22, 25, 32, 32, juce::Justification::centred);
     g.setColour(palette::text); g.setFont(font(21, true)); g.drawText("DualDeck", 63, 25, 126, 25, juce::Justification::centredLeft);
-    g.setColour(palette::muted); g.setFont(font(10)); g.drawText("JUCE EDITION  /  0.7", 64, 50, 124, 17, juce::Justification::centredLeft);
+    g.setColour(palette::muted); g.setFont(font(10)); g.drawText(juce::String("JUCE / ") + DUALDECK_VERSION, 64, 50, 124, 17, juce::Justification::centredLeft);
     g.setFont(font(11)); g.drawText("IL TUO SPAZIO", 22, 103, 160, 20, juce::Justification::centredLeft);
     g.setColour(palette::line); g.drawHorizontalLine(getHeight() - 76, 196, static_cast<float>(getWidth()));
     if (view == 0)
