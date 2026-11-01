@@ -213,42 +213,50 @@ bool AudioEngine::makeRoom(std::size_t bytes)
     }
     return true;
 }
-juce::Result AudioEngine::loadClip(const juce::File& file, const ClipData*& result, const juce::String& revision, bool reserveForPlayback)
+juce::Result AudioEngine::loadClip(const juce::File& file, const ClipData*& result, const juce::String& revision,
+                                  bool reserveForPlayback, bool allowEviction)
 {
     const auto key = keyFor(file, revision);
     {
         const std::lock_guard<std::mutex> lock(cacheLock);
         if (const auto found = clips.find(key); found != clips.end())
         {
-            found->second.lastAccess = ++accessCounter;
+            if (allowEviction || reserveForPlayback) found->second.lastAccess = ++accessCounter;
             result = found->second.clip.get();
             if (reserveForPlayback) result->activeReferences.fetch_add(1, std::memory_order_acq_rel);
             return juce::Result::ok();
         }
     }
+    const auto decodeBudget = allowEviction ? cacheLimit : cacheLimit - cacheBytes.load();
+    if (decodeBudget < 2 * sizeof(float)) return juce::Result::fail("Preparazione rinviata: memoria audio occupata.");
     if (!file.existsAsFile()) return juce::Result::fail("File non trovato: " + file.getFileName());
     juce::AudioFormatManager formats; formats.registerBasicFormats();
     std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));
     auto clip = std::make_unique<ClipData>();
     if (!reader)
     {
-        const auto decoded = decodeWithMediaFoundation(file, *clip);
+        const auto decoded = decodeWithMediaFoundation(file, *clip, decodeBudget);
         if (decoded.failed()) return decoded;
     }
     else
     {
-        if (reader->sampleRate <= 0 || reader->lengthInSamples <= 0 || reader->lengthInSamples / reader->sampleRate > 180.1)
-            return juce::Result::fail("Il clip deve durare tra 0 e 180 secondi.");
+        if (!std::isfinite(reader->sampleRate) || reader->sampleRate <= 0 || reader->lengthInSamples <= 0)
+            return juce::Result::fail("Il file audio e vuoto o ha una frequenza non valida.");
         if (reader->numChannels < 1 || reader->numChannels > 2) return juce::Result::fail("Sono supportati file mono o stereo.");
+        // Decode only the playable prefix; the source file stays untouched.
+        const auto framesToRead = reader->lengthInSamples / reader->sampleRate > 180.0
+            ? static_cast<juce::int64>(reader->sampleRate * 180.0) : reader->lengthInSamples;
         const auto maxFrames = cacheLimit / (2 * sizeof(float));
-        if (static_cast<std::uint64_t>(reader->lengthInSamples) > maxFrames)
+        if (static_cast<std::uint64_t>(framesToRead) > maxFrames)
             return juce::Result::fail("Il clip supera la cache audio da 384 MiB.");
+        if (!allowEviction && static_cast<std::size_t>(framesToRead) * 2 * sizeof(float) > cacheLimit - cacheBytes.load())
+            return juce::Result::fail("Preparazione rinviata: memoria audio occupata.");
         clip->sampleRate = reader->sampleRate;
-        clip->samples.resize(static_cast<std::size_t>(reader->lengthInSamples) * 2);
+        clip->samples.resize(static_cast<std::size_t>(framesToRead) * 2);
         juce::AudioBuffer<float> chunk(2, 8192);
-        for (juce::int64 offset = 0; offset < reader->lengthInSamples; offset += chunk.getNumSamples())
+        for (juce::int64 offset = 0; offset < framesToRead; offset += chunk.getNumSamples())
         {
-            const int frames = static_cast<int>(juce::jmin<juce::int64>(chunk.getNumSamples(), reader->lengthInSamples - offset));
+            const int frames = static_cast<int>(juce::jmin<juce::int64>(chunk.getNumSamples(), framesToRead - offset));
             if (!reader->read(&chunk, 0, frames, offset, true, true)) return juce::Result::fail("Errore di lettura audio.");
             for (int frame = 0; frame < frames; ++frame)
                 for (int channel = 0; channel < 2; ++channel)
@@ -258,24 +266,125 @@ juce::Result AudioEngine::loadClip(const juce::File& file, const ClipData*& resu
                 }
         }
     }
-    if (clip->sampleRate <= 0 || clip->frames() < 1 || clip->duration() > 180.1)
+    if (!std::isfinite(clip->sampleRate) || clip->sampleRate <= 0 || clip->frames() < 1 || clip->duration() > 180.0)
         return juce::Result::fail("Il clip deve durare tra 0 e 180 secondi.");
     const auto bytes = clip->samples.size() * sizeof(float);
     const std::lock_guard<std::mutex> lock(cacheLock);
     if (const auto found = clips.find(key); found != clips.end())
     {
-        found->second.lastAccess = ++accessCounter;
+        if (allowEviction || reserveForPlayback) found->second.lastAccess = ++accessCounter;
         result = found->second.clip.get();
         if (reserveForPlayback) result->activeReferences.fetch_add(1, std::memory_order_acq_rel);
         return juce::Result::ok();
     }
-    if (!makeRoom(bytes))
+    if (allowEviction ? !makeRoom(bytes) : bytes > cacheLimit - cacheBytes.load())
         return juce::Result::fail("Cache audio piena: i clip in riproduzione occupano la memoria disponibile. Ferma i suoni e riprova.");
     if (reserveForPlayback) clip->activeReferences.fetch_add(1, std::memory_order_relaxed);
     result = clip.get();
     clips.emplace(key, CacheEntry {std::move(clip), ++accessCounter});
     cacheBytes.fetch_add(bytes);
     return juce::Result::ok();
+}
+juce::Result AudioEngine::preparePlaybackClip(const juce::File& file, const ClipData*& result, const juce::String& revision,
+                                             double startSeconds, bool reserveForPlayback, bool allowEviction)
+{
+    const auto key = preparedKey(file, revision, startSeconds);
+    {
+        const std::lock_guard<std::mutex> lock(cacheLock);
+        if (const auto found = prepared.find(key); found != prepared.end())
+        {
+            if (!found->second.clip->streamed->failed())
+            {
+                if (allowEviction || reserveForPlayback) found->second.lastAccess = ++accessCounter;
+                result = found->second.clip.get();
+                if (reserveForPlayback) result->activeReferences.fetch_add(1, std::memory_order_acq_rel);
+                return juce::Result::ok();
+            }
+            if (found->second.clip->activeReferences.load(std::memory_order_acquire) != 0)
+                return juce::Result::fail("Il suono precedente è ancora in arresto. Riprova.");
+            prefixBytes.fetch_sub(found->second.clip->streamed->prefixBytes()); prepared.erase(found);
+        }
+    }
+    auto clip = std::make_unique<ClipData>();
+    const auto loaded = streaming.prepare(file, startSeconds, clip->streamed);
+    if (loaded.failed()) return loaded;
+    clip->sampleRate = clip->streamed->rate();
+    const auto bytes = clip->streamed->prefixBytes();
+    const auto limit = std::min(cacheLimit, static_cast<std::size_t>(96u * 1024u * 1024u));
+    const std::lock_guard<std::mutex> lock(cacheLock);
+    if (const auto found = prepared.find(key); found != prepared.end())
+    {
+        if (found->second.clip->streamed->failed()) return juce::Result::fail("Lettura audio interrotta. Riprova.");
+        result = found->second.clip.get();
+        if (reserveForPlayback) result->activeReferences.fetch_add(1, std::memory_order_acq_rel);
+        return juce::Result::ok();
+    }
+    if (bytes > limit) return juce::Result::fail("Il prefisso audio supera la memoria disponibile.");
+    while (prefixBytes.load() > limit - bytes)
+    {
+        if (!allowEviction) return juce::Result::fail("Preparazione rinviata: memoria iniziale occupata.");
+        auto victim = prepared.end();
+        for (auto it = prepared.begin(); it != prepared.end(); ++it)
+            if (it->second.clip->activeReferences.load(std::memory_order_acquire) == 0
+                && (victim == prepared.end() || it->second.lastAccess < victim->second.lastAccess)) victim = it;
+        if (victim == prepared.end()) return juce::Result::fail("Memoria iniziale occupata dai suoni attivi.");
+        prefixBytes.fetch_sub(victim->second.clip->streamed->prefixBytes()); prepared.erase(victim);
+    }
+    if (reserveForPlayback) clip->activeReferences.fetch_add(1, std::memory_order_relaxed);
+    result = clip.get();
+    prepared.emplace(key, CacheEntry{std::move(clip), ++accessCounter}); prefixBytes.fetch_add(bytes);
+    return juce::Result::ok();
+}
+bool AudioEngine::isPrepared(const juce::File& file, const juce::String& revision, double startSeconds)
+{
+    const std::lock_guard<std::mutex> lock(cacheLock);
+    const auto found = prepared.find(preparedKey(file, revision, startSeconds));
+    return found != prepared.end() && !found->second.clip->streamed->failed();
+}
+AudioEngine::PlayResult AudioEngine::playPrepared(std::uint64_t id, const juce::File& file, const juce::String& revision,
+                                                const VoiceSettings& settings, bool consumeReservation)
+{
+    const std::lock_guard<std::mutex> lock(cacheLock);
+    const auto found = prepared.find(preparedKey(file, revision, settings.trimStart));
+    if (found == prepared.end()) return PlayResult::notCached;
+    if (found->second.clip->streamed->failed())
+    {
+        if (consumeReservation) found->second.clip->activeReferences.fetch_sub(1, std::memory_order_acq_rel);
+        return PlayResult::notCached;
+    }
+    found->second.lastAccess = ++accessCounter;
+    return queueClip(id, found->second.clip.get(), settings, consumeReservation);
+}
+void AudioEngine::releasePreparedReservation(const juce::File& file, const juce::String& revision, double startSeconds)
+{
+    const std::lock_guard<std::mutex> lock(cacheLock);
+    const auto found = prepared.find(preparedKey(file, revision, startSeconds));
+    if (found == prepared.end()) return;
+    auto& references = found->second.clip->activeReferences;
+    auto count = references.load(std::memory_order_acquire);
+    while (count > 0 && !references.compare_exchange_weak(count, count - 1, std::memory_order_acq_rel)) {}
+}
+void AudioEngine::preloadClips(const std::vector<PreloadRequest>& requests, const std::function<bool()>& cancelled,
+                               const std::function<void(int)>& remaining)
+{
+    struct Pins
+    {
+        AudioEngine& engine;
+        std::vector<PreloadRequest> files;
+        ~Pins() { for (const auto& file : files) engine.releasePreparedReservation(file.file, file.revision, file.startSeconds); }
+    } pinned{*this, {}};
+    int pending = static_cast<int>(requests.size());
+    for (const auto& request : requests)
+    {
+        if (cancelled()) return;
+        // Leave tiny fragments unused rather than scanning/decoding the rest
+        // of a large library when the background cache is effectively full.
+        const ClipData* clip = nullptr;
+        const auto result = preparePlaybackClip(request.file, clip, request.revision, request.startSeconds, request.bound, request.priority);
+        if (result.wasOk() && request.bound) pinned.files.push_back(request);
+        remaining(--pending);
+    }
+    remaining(0);
 }
 bool AudioEngine::isCached(const juce::File& file, const juce::String& revision)
 {

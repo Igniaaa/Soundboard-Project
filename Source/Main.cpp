@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "KeyboardBridge.h"
+#include <future>
 #if JUCE_WINDOWS
  #include <windows.h>
  #include <dwmapi.h>
@@ -7,6 +8,13 @@
 
 namespace dualdeck
 {
+juce::Result runClipDurationTests(const juce::File& tempRoot);
+juce::Result runFullKeyboardTests(const juce::File& tempRoot);
+juce::Result runPreloadTests(const juce::File& tempRoot);
+juce::Result runPreloadProbe(juce::StringArray& report);
+juce::Result runWindowsStreamReaderTests(const juce::File& tempRoot);
+juce::Result runStreamingTests(const juce::File& tempRoot);
+
 class DeckWindow final : public juce::DocumentWindow
 {
 public:
@@ -61,7 +69,7 @@ public:
         return command.contains("--self-test") || command.contains("--audio-smoke")
             || command.contains("--keyboard-broker") || command.contains("--keyboard-driver-status")
             || command.contains("--keyboard-smoke") || command.contains("--smoke-test")
-            || command.contains("--performance-test") || command.contains("--interaction-smoke")
+            || command.contains("--performance-test") || command.contains("--preload-probe") || command.contains("--interaction-smoke")
             || command.contains("--ui-editor-snapshot");
     }
     void initialise(const juce::String& commandLine) override
@@ -98,6 +106,22 @@ public:
             int failures = result.failed() ? 1 : 0;
             result = runLibraryFeatureTests(resultDirectory.getChildFile("catalog-fixtures"));
             report.add("Folders / deduplication / ordering / profile removal: " + (result.wasOk() ? juce::String("PASS") : result.getErrorMessage()));
+            if (result.failed()) ++failures;
+            result = runClipDurationTests(resultDirectory.getChildFile("duration-fixtures"));
+            report.add("Audio prefix / 180-second boundary / unchanged originals: " + (result.wasOk() ? juce::String("PASS") : result.getErrorMessage()));
+            if (result.failed()) ++failures;
+            result = runFullKeyboardTests(resultDirectory.getChildFile("keyboard-fixtures"));
+            report.add("Full-size Italian keyboard / distinct physical bindings / round trip: " + (result.wasOk() ? juce::String("PASS") : result.getErrorMessage()));
+            if (result.failed()) ++failures;
+            result = runPreloadTests(resultDirectory.getChildFile("preload-fixtures"));
+            report.add("Keyboard-view first press / full-profile preloading: " + (result.wasOk() ? juce::String("PASS") : result.getErrorMessage()));
+            if (result.failed()) ++failures;
+            result = std::async(std::launch::async, [&resultDirectory]
+                { return runWindowsStreamReaderTests(resultDirectory.getChildFile("windows-stream-fixtures")); }).get();
+            report.add("Windows streaming reader / seek / duration / exact content: " + (result.wasOk() ? juce::String("PASS") : result.getErrorMessage()));
+            if (result.failed()) ++failures;
+            result = runStreamingTests(resultDirectory.getChildFile("streaming-fixtures"));
+            report.add("Paged playback / head / trim / overlap / loop / pinning: " + (result.wasOk() ? juce::String("PASS") : result.getErrorMessage()));
             if (result.failed()) ++failures;
             const auto currentFile = root.getChildFile("data/library.json");
             if (currentFile.existsAsFile())
@@ -178,6 +202,16 @@ public:
             report.add("Failures: " + juce::String(failures));
             resultDirectory.getChildFile("library-tests.txt").replaceWithText(report.joinIntoString("\n"));
             setApplicationReturnValue(failures == 0 ? 0 : 1); quit(); return;
+        }
+        if (args.contains("--preload-probe"))
+        {
+            const auto destination = args.size() > 1 ? juce::File(args[1]) : findProjectRoot().getChildFile("test-output/preload-probe.txt");
+            destination.getParentDirectory().createDirectory();
+            juce::StringArray report;
+            const auto result = runPreloadProbe(report);
+            report.add(result.wasOk() ? "PASS" : result.getErrorMessage());
+            destination.replaceWithText(report.joinIntoString("\n"));
+            setApplicationReturnValue(result.wasOk() ? 0 : 1); quit(); return;
         }
         if (args.contains("--performance-test"))
         {

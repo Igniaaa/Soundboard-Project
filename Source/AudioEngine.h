@@ -2,6 +2,7 @@
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "Library.h"
+#include "StreamingAudio.h"
 #include <map>
 #include <mutex>
 #include <optional>
@@ -58,13 +59,22 @@ class AudioEngine
 public:
     static constexpr std::size_t defaultCacheLimit = 384u * 1024u * 1024u;
     enum class PlayResult { queued, notCached, invalidTrim, noOutput, queueFull };
+    struct PreloadRequest { juce::File file; juce::String revision; bool priority = false, bound = false; double startSeconds = 0; };
     explicit AudioEngine(std::size_t cacheLimitBytes = defaultCacheLimit);
     OutputEndpoint main, monitor;
     juce::Result configure(const juce::String& outputName, const juce::String& monitorName, bool monitorEnabled,
                            const juce::String& inputName = {}, bool microphoneEnabled = false);
     void setMicrophoneGain(float gain) { microphoneGain.store(std::clamp(gain, 0.0f, 1.0f)); }
     void setMicrophoneMonitor(bool enabled) { microphoneMonitor.store(enabled); }
-    juce::Result loadClip(const juce::File&, const ClipData*&, const juce::String& revision = {}, bool reserveForPlayback = false); // Background worker only.
+    juce::Result loadClip(const juce::File&, const ClipData*&, const juce::String& revision = {},
+                          bool reserveForPlayback = false, bool allowEviction = true); // Background worker only.
+    juce::Result preparePlaybackClip(const juce::File&, const ClipData*&, const juce::String& revision = {},
+                                    double startSeconds = 0, bool reserveForPlayback = false, bool allowEviction = true);
+    bool isPrepared(const juce::File&, const juce::String& revision = {}, double startSeconds = 0);
+    PlayResult playPrepared(std::uint64_t id, const juce::File&, const juce::String&, const VoiceSettings&, bool consumeReservation = false);
+    void releasePreparedReservation(const juce::File&, const juce::String&, double startSeconds);
+    void preloadClips(const std::vector<PreloadRequest>&, const std::function<bool()>& cancelled,
+                      const std::function<void(int)>& remaining); // Background worker only, requests in priority order.
     bool isCached(const juce::File&, const juce::String& revision = {});
     PlayResult playCached(std::uint64_t id, const juce::File&, const juce::String& revision, const VoiceSettings&);
     PlayResult playReserved(std::uint64_t id, const juce::File&, const juce::String& revision, const VoiceSettings&);
@@ -74,7 +84,10 @@ public:
     void stop();
     void pause(bool);
     bool hasMonitor() const { return monitor.isOpen(); }
-    std::size_t cacheSize() const { return cacheBytes.load(); }
+    std::size_t cacheSize() const { return cacheBytes.load() + prefixBytes.load() + streaming.pageBytes(); }
+    std::size_t preparedSize() const { return prefixBytes.load(); }
+    juce::String takeStreamingError() { return streaming.takeError(); }
+    juce::String streamingStatistics() const { return streaming.statistics(); }
     ~AudioEngine();
 private:
     struct CacheEntry { std::unique_ptr<ClipData> clip; std::uint64_t lastAccess = 0; };
@@ -82,13 +95,19 @@ private:
     bool makeRoom(std::size_t bytes);
     PlayResult queueClip(std::uint64_t id, const ClipData*, const VoiceSettings&, bool consumeReservation);
     std::map<juce::String, CacheEntry> clips;
+    std::map<juce::String, CacheEntry> prepared;
     std::mutex cacheLock;
     std::atomic<std::size_t> cacheBytes {0};
+    std::atomic<std::size_t> prefixBytes {0};
     std::size_t cacheLimit;
     std::uint64_t accessCounter = 0;
+    juce::String preparedKey(const juce::File& file, const juce::String& revision, double start) const
+    { return keyFor(file, revision) + "|head:" + juce::String(std::isfinite(start) ? std::max(0.0, start) : 0.0, 9); }
     MicrophoneRing microphone;
     std::atomic<float> microphoneGain {0.7f};
     std::atomic<bool> microphoneMonitor {false};
+    StreamingAudio streaming;
 };
-juce::Result decodeWithMediaFoundation(const juce::File&, ClipData&);
+juce::Result decodeWithMediaFoundation(const juce::File&, ClipData&,
+                                     std::size_t maxPcmBytes = AudioEngine::defaultCacheLimit);
 }

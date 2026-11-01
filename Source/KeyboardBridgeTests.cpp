@@ -44,6 +44,37 @@ void decoderTests()
     require(!decode(30, 6, packet) && !decode(30, 7, packet), "mutually exclusive E0 E1 flags rejected");
     require(!decode(30, 8, packet) && !decode(30, 16, packet) && !decode(30, 32, packet), "unsupported terminal service flags fail open");
 }
+void fullKeyboardDeliveryTests()
+{
+    Shared shared;
+    dualdeck::KeyboardBlockSession policy;
+    policy.setBackendAvailable(true); policy.select(1); policy.confirmAllKeysReleased();
+    require(policy.arm(100), "full keyboard test session arms");
+    dualdeck::KeyboardScanSequence sequence;
+    Packet event;
+    std::uint64_t time = 100;
+    for (int i = 0; i < 2; ++i)
+    {
+        require(deliverPhysicalKey(shared, policy, sequence, 1, {0x1d, 2, 1}, ++time), "Pause prefix stays suppressed");
+        require(!pop(shared, event), "Pause prefix never delivers Ctrl");
+        require(deliverPhysicalKey(shared, policy, sequence, 1, {0x45, 0, 1}, ++time), "Pause tail delivered");
+        require(pop(shared, event) && event.scan == 0x45 && event.prefix == 2 && event.down == 1, "Pause press canonical");
+        require(pop(shared, event) && event.scan == 0x45 && event.prefix == 2 && event.down == 0, "Pause releases without physical key-up");
+        require(!pop(shared, event) && policy.isArmed(), "Pause leaves no extra Num Lock event or stuck state");
+    }
+    for (const auto packet : {Packet{0x47, 0, 1}, Packet{0x47, 1, 1}, Packet{0x1c, 0, 1}, Packet{0x1c, 1, 1}})
+    {
+        require(deliverPhysicalKey(shared, policy, sequence, 1, packet, ++time), "numpad and main keys delivered");
+        require(pop(shared, event) && event.scan == packet.scan && event.prefix == packet.prefix && event.down == 1,
+                "numpad and main identities remain distinct");
+        require(deliverPhysicalKey(shared, policy, sequence, 1, packet, ++time) && !pop(shared, event), "dedicated autorepeat stays suppressed");
+        require(deliverPhysicalKey(shared, policy, sequence, 1, {packet.scan, packet.prefix, 0}, ++time)
+                && pop(shared, event) && event.down == 0, "dedicated key releases correctly");
+    }
+    for (unsigned i = 0; i < capacity; ++i) require(push(shared, {30, 0, 1}), "fill delivery test queue");
+    require(!deliverPhysicalKey(shared, policy, sequence, 1, {0x45, 2, 1}, ++time)
+            && !policy.isArmed() && policy.stopPadsRequested(), "Pause with full queue disarms and requests pad stop");
+}
 void watchdogTests()
 {
     require(!expired(1599, 100), "heartbeat valid at 1499ms"); require(expired(1600, 100), "heartbeat expires at 1500ms"); require(expired(99, 100), "backward clock fails open");
@@ -182,4 +213,4 @@ void filterWriteTests()
 }
 
 }
-int main() { queueTests(); identityTests(); decoderTests(); watchdogTests(); heartbeatOrderingTests(); cleanupTests(); cleanupDeliveryTests(); forwardingDeliveryTests(); filterWriteTests(); std::cout << "PASS keyboard bridge: " << checks << " checks\n"; }
+int main() { queueTests(); identityTests(); decoderTests(); fullKeyboardDeliveryTests(); watchdogTests(); heartbeatOrderingTests(); cleanupTests(); cleanupDeliveryTests(); forwardingDeliveryTests(); filterWriteTests(); std::cout << "PASS keyboard bridge: " << checks << " checks\n"; }

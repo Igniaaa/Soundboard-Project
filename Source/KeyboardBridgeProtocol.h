@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <string>
 #include "KeyboardBlockSession.h"
+#include "KeyboardScan.h"
 namespace dualdeck::keyboardbridge
 {
 constexpr unsigned capacity = 256;
@@ -76,6 +77,24 @@ inline bool decode(unsigned scan, unsigned state, Packet& packet)
     if ((state & ~7u) != 0 || extended == 6) return false;
     packet = {scan, extended == 2 ? 1u : (extended == 4 ? 2u : 0u), (state & 1u) == 0 ? 1u : 0u};
     return valid(packet);
+}
+// Deliver physical keys after normalising multi-packet keys. Pulse releases are
+// internal pad events only; no keyboard input is synthesised for Windows.
+inline bool deliverPhysicalKey(Shared& shared, KeyboardBlockSession& policy, KeyboardScanSequence& sequence,
+                               std::uintptr_t device, Packet raw, std::uint64_t time)
+{
+    if (!valid(raw)) return false;
+    const auto key = sequence.input(raw.scan, raw.prefix == 1 ? 2u : raw.prefix == 2 ? 4u : 0u, raw.down != 0);
+    if (key.scan == 0) return true;
+    Packet packet{key.scan, key.flags == 2 ? 1u : key.flags == 4 ? 2u : 0u, key.down ? 1u : 0u};
+    const auto deliver = [&]()
+    {
+        const auto decision = policy.input(device, packet.scan, packet.prefix, packet.down != 0, time, room(shared));
+        return decision.suppress && (decision.event == KeyboardBlockSession::none || push(shared, packet));
+    };
+    if (!deliver()) return false;
+    if (key.pulse) { packet.down = 0; return deliver(); }
+    return true;
 }
 inline bool exactId(const std::wstring& left, const std::wstring& right)
 {

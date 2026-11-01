@@ -7,6 +7,8 @@
 #include <chrono>
 #include <utility>
 #include <vector>
+#include <memory>
+#include "StreamingPcm.h"
 #include "SpectralScrub.h"
 
 namespace dualdeck
@@ -15,19 +17,20 @@ enum class PlayMode { restart, overlap, toggleLoop, holdLoop, scrub };
 struct ClipData
 {
     std::vector<float> samples; // Stereo, interleaved. Owned by the non-audio cache.
+    std::shared_ptr<StreamedPcm> streamed;
     double sampleRate = 48000.0;
     mutable std::atomic<unsigned> activeReferences {0}; // Pins queued commands and live voices against cache eviction.
     ClipData() = default;
     ClipData(const ClipData&) = delete;
     ClipData& operator=(const ClipData&) = delete;
-    ClipData(ClipData&& other) noexcept : samples(std::move(other.samples)), sampleRate(other.sampleRate) {}
+    ClipData(ClipData&& other) noexcept : samples(std::move(other.samples)), streamed(std::move(other.streamed)), sampleRate(other.sampleRate) {}
     ClipData& operator=(ClipData&& other) noexcept
     {
-        samples = std::move(other.samples); sampleRate = other.sampleRate;
+        samples = std::move(other.samples); streamed = std::move(other.streamed); sampleRate = other.sampleRate;
         activeReferences.store(0, std::memory_order_relaxed);
         return *this;
     }
-    int frames() const { return static_cast<int>(samples.size() / 2); }
+    int frames() const { return streamed ? streamed->frameCount() : static_cast<int>(samples.size() / 2); }
     double duration() const { return frames() / sampleRate; }
 };
 struct VoiceSettings
@@ -94,6 +97,7 @@ public:
             std::chrono::steady_clock::now().time_since_epoch()).count());
     }
     double lastOnsetLatencyMs() const { return lastOnsetMs.load(std::memory_order_relaxed); }
+    std::uint64_t streamingUnderruns() const { return underruns.load(std::memory_order_relaxed); }
     void trackVoice(std::uint64_t id)
     {
         trackedId.store(0, std::memory_order_release);
@@ -208,6 +212,19 @@ public:
             }
             else releaseClip(command.clip);
         }
+        std::array<PcmReadView, maxVoices> sourceViews;
+        std::array<bool, maxVoices> starved{};
+        for (auto& voice : voices) if (voice.clip && voice.clip->streamed)
+        {
+            if (voice.clip->streamed->failed()) { clearVoice(voice); continue; }
+            // Keep the read-ahead comparable to the ready head. A multi-second
+            // window across 32 voices can recycle still-needed future pages
+            // in the bounded pool, especially when source rates differ.
+            const int ahead = static_cast<int>(voice.clip->sampleRate * 0.5) + 2;
+            voice.clip->streamed->request(static_cast<int>(voice.position), ahead);
+            if (voice.loop && voice.position + ahead >= voice.end)
+                voice.clip->streamed->request(voice.begin, std::min(ahead, voice.end - voice.begin));
+        }
         // Build pad groups once per callback. Keep each group's smoothing state
         // across callbacks without allocating or looking up IDs per sample.
         std::array<VoiceGroup, maxVoices> currentGroups {};
@@ -284,9 +301,30 @@ public:
                             const auto index = static_cast<int>(v.position);
                             const auto next = index + 1 < v.end ? index + 1 : (v.loop ? v.begin : index);
                             const auto fraction = static_cast<float>(v.position - index);
-                            const auto& s = v.clip->samples;
-                            sourceL = s[index * 2] + fraction * (s[next * 2] - s[index * 2]);
-                            sourceR = s[index * 2 + 1] + fraction * (s[next * 2 + 1] - s[index * 2 + 1]);
+                            if (v.clip->streamed)
+                            {
+                                const auto slot = static_cast<std::size_t>(&v - voices.data());
+                                auto& view = sourceViews[slot];
+                                const auto read = [&](int position, float& leftValue, float& rightValue)
+                                {
+                                    if (!view.contains(position)) view = v.clip->streamed->acquire(position);
+                                    return view.read(position, leftValue, rightValue);
+                                };
+                                float nextL = 0, nextR = 0;
+                                if (!read(index, sourceL, sourceR) || !read(next, nextL, nextR))
+                                {
+                                    if (!starved[slot]) { starved[slot] = true; underruns.fetch_add(1, std::memory_order_relaxed); }
+                                    if (v.clip->streamed->failed()) clearVoice(v);
+                                    continue; // Preserve the playhead until its data is ready.
+                                }
+                                sourceL += fraction * (nextL - sourceL); sourceR += fraction * (nextR - sourceR);
+                            }
+                            else
+                            {
+                                const auto& s = v.clip->samples;
+                                sourceL = s[index * 2] + fraction * (s[next * 2] - s[index * 2]);
+                                sourceR = s[index * 2 + 1] + fraction * (s[next * 2 + 1] - s[index * 2 + 1]);
+                            }
                         }
                         if (v.filterMix > 0.0f)
                         {
@@ -592,7 +630,8 @@ private:
         if (c.settings.mode != PlayMode::overlap)
             for (auto& v : voices) if (v.clip && v.id == c.id) { clearVoice(v); found = true; }
         if (found && c.settings.mode == PlayMode::toggleLoop) { releaseClip(c.clip); return; }
-        if (!c.clip || c.clip->frames() < 1) { releaseClip(c.clip); return; }
+        if (!c.clip || c.clip->frames() < 1 || (c.clip->streamed && (c.settings.mode == PlayMode::scrub || c.clip->streamed->failed())))
+        { releaseClip(c.clip); return; }
         const int begin = std::clamp(static_cast<int>(c.settings.trimStart * c.clip->sampleRate), 0, c.clip->frames());
         const int end = c.settings.trimEnd > 0 ? std::clamp(static_cast<int>(c.settings.trimEnd * c.clip->sampleRate), 0, c.clip->frames()) : c.clip->frames();
         if (begin >= end) { releaseClip(c.clip); return; }
@@ -705,6 +744,7 @@ private:
     std::atomic<int> active {0};
     std::atomic<float> targetVolume {0.7f}, peak {0};
     std::atomic<double> lastOnsetMs {0.0};
+    std::atomic<std::uint64_t> underruns {0};
     std::atomic<double> scrubTargetSeconds {0.0};
     SpectralScrub spectralScrub;
     std::atomic<std::uint64_t> trackedId {0}, publishedId {0};

@@ -1,6 +1,7 @@
 #include "KeyboardFilter.h"
 #include "KeyboardBlockSession.h"
 #include "KeyboardDeviceIdentity.h"
+#include "KeyboardScan.h"
 #include <cstdlib>
 #include <iostream>
 #include <type_traits>
@@ -160,6 +161,43 @@ void sessionTests()
 }
 int main()
 {
+    KeyboardScanSequence scans;
+    auto key = scans.input(0x47, 0, true);
+    require(key.scan == 0x47 && key.flags == 0, "numpad 7 keeps its physical code independent of Num Lock");
+    key = scans.input(0x47, 2, true);
+    require(key.scan == 0x47 && key.flags == 2, "Home remains distinct from numpad 7");
+    key = scans.input(0x1c, 2, true);
+    require(key.scan == 0x1c && key.flags == 2, "numpad Enter remains distinct from main Enter");
+    key = scans.input(0x45, 2, true);
+    require(key.scan == 0x45 && key.flags == 0, "Num Lock extended variant is canonical");
+    require(scans.input(0x2a, 2, true).scan == 0, "Print Screen fake Shift never binds a pad");
+    key = scans.input(0x54, 0, true);
+    require(key.scan == 0x37 && key.flags == 2, "Alt Print Screen uses the Print Screen binding");
+    require(scans.input(0x1d, 4, true).scan == 0, "Pause E1 prefix does not trigger Ctrl");
+    key = scans.input(0x45, 0, true);
+    require(key.scan == 0x45 && key.flags == 4 && key.pulse && key.down, "split Pause emits one releasable pulse");
+    require(scans.input(0x1d, 4, false).scan == 0 && scans.input(0x45, 0, false).scan == 0,
+            "split Pause release never triggers Num Lock");
+    key = scans.input(0x45, 4, true);
+    require(key.scan == 0x45 && key.flags == 4 && key.pulse, "direct E1 Pause works repeatedly");
+    key = scans.input(0x46, 2, true);
+    require(key.scan == 0x45 && key.flags == 4 && key.pulse, "Ctrl Break maps to Pause without a stuck voice");
+    require(scans.input(0, 0, true).scan == 0 && scans.input(255, 0, true).scan == 0
+            && scans.input(30, 6, true).scan == 0, "invalid physical packets are ignored");
+    PhysicalKeyboardInput physical;
+    require(physical.input(1, 0x1c, 0, true).scan == 0x1c, "main Enter press delivered");
+    require(physical.input(1, 0x1c, 0, true).scan == 0, "foreground repeats cannot restart a pad");
+    require(physical.input(1, 0x1c, 2, true).flags == 2, "numpad Enter can be held alongside main Enter");
+    require(physical.input(2, 0x1c, 0, true).scan == 0, "second device holding the same key does not double-trigger");
+    require(physical.input(1, 0x1c, 0, false).scan == 0, "one device cannot release the other device's held key");
+    key = physical.input(2, 0x1c, 0, false);
+    require(key.scan == 0x1c && key.flags == 0 && !key.down, "last device releases the shared binding");
+    key = physical.input(1, 0x1c, 2, false);
+    require(key.scan == 0x1c && key.flags == 2 && !key.down, "numpad Enter releases independently");
+    require(physical.input(1, 0x1c, 2, false).scan == 0, "unmatched foreground release ignored");
+    physical.input(1, 30, 0, true); physical.clear();
+    require(physical.input(1, 30, 0, true).scan == 30, "device reset clears stale held keys");
+    require(physical.input(0, 30, 0, true).scan == 0, "unidentified local device ignored");
     KeyboardFilter input;
     input.enable(true);
     require(!input.isEnabled(), "cannot arm without device");

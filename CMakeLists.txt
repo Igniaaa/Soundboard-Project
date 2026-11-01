@@ -25,6 +25,7 @@ add_subdirectory("${JUCE_DIR}" juce)
 
 add_executable(DualDeckJuce WIN32
     Source/Main.cpp Source/Library.cpp Source/LibraryCatalog.cpp Source/LibraryWorkflow.cpp Source/AudioEngine.cpp Source/WindowsDecoder.cpp Source/MainComponent.cpp Source/PadPlayback.cpp Source/PadEditor.cpp Source/RawKeyboard.cpp Source/KeyboardBridge.cpp Tests/LibraryFeatureTests.cpp)
+target_sources(DualDeckJuce PRIVATE Source/StreamingAudio.cpp Source/WindowsStreamReader.cpp Tests/WindowsStreamReaderTests.cpp Tests/StreamingTests.cpp)
 if(DUALDECK_UI_EDITOR)
     target_sources(DualDeckJuce PRIVATE Source/UiLayoutEditor.cpp)
     target_compile_definitions(DualDeckJuce PRIVATE DUALDECK_UI_EDITOR=1)

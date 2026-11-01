@@ -10,9 +10,10 @@
 
 namespace dualdeck
 {
-juce::Result decodeWithMediaFoundation(const juce::File& file, ClipData& clip)
+juce::Result decodeWithMediaFoundation(const juce::File& file, ClipData& clip, std::size_t maxPcmBytes)
 {
 #if JUCE_WINDOWS
+    if (maxPcmBytes < 2 * sizeof(float)) return juce::Result::fail("Preparazione rinviata: memoria audio occupata.");
     using Microsoft::WRL::ComPtr;
     constexpr DWORD firstAudio = static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM);
     struct Runtime
@@ -52,7 +53,8 @@ juce::Result decodeWithMediaFoundation(const juce::File& file, ClipData& clip)
     actual->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &channels);
     if (channels != 2 || rate != 48000) return juce::Result::fail("Il codec non fornisce audio stereo a 48 kHz.");
     clip.sampleRate = rate;
-    const auto maxSamples = static_cast<std::size_t>(180.1 * rate) * 2;
+    const auto maxSamples = static_cast<std::size_t>(180) * rate * 2;
+    const auto memorySamples = maxPcmBytes / (2 * sizeof(float)) * 2;
     for (;;)
     {
         DWORD flags = 0; ComPtr<IMFSample> sample;
@@ -65,19 +67,23 @@ juce::Result decodeWithMediaFoundation(const juce::File& file, ClipData& clip)
             if (FAILED(hr)) return fail(hr);
             BYTE* bytes = nullptr; DWORD size = 0; hr = buffer->Lock(&bytes, nullptr, &size);
             if (FAILED(hr)) return fail(hr);
-            const auto count = static_cast<std::size_t>(size / sizeof(float));
-            if (size % 8 != 0 || clip.samples.size() + count > maxSamples)
-            { buffer->Unlock(); return juce::Result::fail("Il clip deve durare al massimo 180 secondi."); }
+            if (size % 8 != 0)
+            { buffer->Unlock(); return juce::Result::fail("Il codec ha fornito un blocco audio non valido."); }
+            const auto count = juce::jmin(static_cast<std::size_t>(size / sizeof(float)), maxSamples - clip.samples.size());
+            if (count > memorySamples - clip.samples.size())
+            { buffer->Unlock(); return juce::Result::fail("Preparazione rinviata: memoria audio occupata."); }
             const auto* values = reinterpret_cast<const float*>(bytes);
             clip.samples.insert(clip.samples.end(), values, values + count); buffer->Unlock();
         }
+        // Stop decoding at the boundary, including inside the final block.
+        if (clip.samples.size() == maxSamples) break;
         if (flags & MF_SOURCE_READERF_ENDOFSTREAM) break;
     }
     if (clip.samples.empty()) return juce::Result::fail("Il file audio e vuoto.");
     for (auto& sample : clip.samples) if (!std::isfinite(sample)) sample = 0;
     return juce::Result::ok();
 #else
-    juce::ignoreUnused(file, clip);
+    juce::ignoreUnused(file, clip, maxPcmBytes);
     return juce::Result::fail("Formato audio non supportato su questa piattaforma.");
 #endif
 }

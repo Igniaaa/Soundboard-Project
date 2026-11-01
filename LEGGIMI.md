@@ -1,5 +1,63 @@
 # DualDeck — JUCE Edition 0.7
 
+## Lettura durante la riproduzione — approvata il 1 novembre 2026
+
+Avvia **DualDeckJuce-0.7.exe** oppure **DualDeckJuce.exe**. La versione prepara mezzo secondo
+per ogni suono; il resto viene letto durante la riproduzione, senza caricare
+tutto il file. Attendi che scompaia **Preparazione suoni** per avere pronti
+anche i suoni sulle altre pagine. Riscontro dell'utente: risposta dei pad
+quasi sempre sotto 10 ms e nessun artefatto percepito durante la riproduzione.
+
+Il layout completo e il limite di 180 secondi sono conservati; i file
+originali restano intatti. La memoria indicata dall'app include i campioni
+audio, mentre Gestione attività include anche il resto del programma e i
+decoder. Aprire l'editor carica ancora il suono completo, fino a 180 secondi,
+per la forma d'onda e lo scrub, e può quindi aumentare la memoria occupata.
+Le due copie principali sono identiche alla build provata, ora conservata in
+**old-builds/DualDeckJuce-0.7-streaming-test.exe**. Anche le precedenti prove
+di primo avvio e tastiera completa sono archiviate in **old-builds**.
+Dettagli: [VERIFICHE-STREAMING.md](VERIFICHE-STREAMING.md).
+
+## Preparazione del primo avvio — versione di prova, 31 ottobre 2026
+
+Prova precedente, ora in **old-builds/DualDeckJuce-0.7-fast-start.exe**. I suoni del profilo venivano
+preparati anche nella vista Tastiera: prima quelli associati ai tasti,
+poi i pad visibili e infine gli altri che trovano spazio nella cache.
+Attendi che scompaia **Preparazione suoni** prima della prova del primo avvio.
+Il caricamento usa un worker separato e conserva il limite di 384 MiB;
+un suono non preparato o espulso dalla cache deve ancora essere decodificato.
+La libreria attuale supera quel limite: nella prova sono risultati pronti
+93 suoni su 329, inclusi tutti e tre quelli associati ai tasti.
+Il limite a 180 secondi, il layout completo e le associazioni sono conservati.
+Misure e verifiche: [VERIFICHE-PRIMO-AVVIO.md](VERIFICHE-PRIMO-AVVIO.md).
+
+## Tastiera completa al 100% — versione di prova, 31 ottobre 2026
+
+Prova precedente conservata in **old-builds/DualDeckJuce-0.7-full-keyboard.exe**. Il layout italiano
+ISO completo di 105 tasti: tastierino numerico, frecce, navigazione,
+Backspace, ù, Shift destro, Win, Menu, Stamp, Scroll e Pausa.
+I numeri e Invio del tastierino sono distinti dai tasti principali;
+Bloc Num non cambia le associazioni fisiche. Nelle finestre strette puoi
+scorrere la tastiera orizzontalmente. Clic destro o Maiusc+F10 associa
+il tasto al pad selezionato; le frecce saltano gli spazi del layout.
+Esc, F12 e il tasto Pausa DJ (Spazio per impostazione predefinita)
+restano riservati. Pausa/Break produce una pressione e un rilascio immediati.
+Con la tastiera dedicata disattivata i comandi richiedono il focus nell'app;
+i normali effetti dei tasti in Windows restano attivi. Quando un pad o la tastiera grafica ha il focus, entrambi i tasti Invio attivano quel controllo senza avviare anche un altro pad associato; usa Associa un tasto per registrarli. Con Bloc Num spento il tastierino può anche spostare il focus grafico secondo il normale comportamento Windows. La cattura dedicata distingue i tasti senza queste azioni locali.
+
+Il precedente riferimento con il solo taglio a 180 secondi è conservato in
+**old-builds/DualDeckJuce-0.7-180s-test.exe**. La versione principale attuale
+include anche il layout completo e conserva le associazioni già salvate.
+Dettagli delle prove: [VERIFICHE-TASTIERA-COMPLETA.md](VERIFICHE-TASTIERA-COMPLETA.md).
+
+## Taglio automatico a 180 secondi — 31 ottobre 2026
+
+I file più lunghi di 180 secondi vengono caricati e riprodotti limitatamente
+ai primi 3 minuti, anziché essere rifiutati. Il taglio vale anche nell'editor
+e per i formati letti tramite i codec Windows. I file originali sul disco
+rimangono intatti; la parte successiva ai 180 secondi non viene caricata.
+Versione precedente approvata e conservata in **old-builds/DualDeckJuce-0.7-180s-test.exe**; il comportamento è incluso nella versione principale attuale.
+
 ## Mix meno attenuato — 30 ottobre 2026
 
 Il bilanciamento delle copie meno aggressivo e il recupero più rapido
@@ -70,12 +128,12 @@ Per spostare e ridimensionare i controlli direttamente nella GUI, usa la [build 
 - La chiusura di un dispositivo audio rilascia anche i clip ancora nella coda dei comandi, così la cache può espellerli senza attendere un nuovo callback.
 - Le pressioni ripetute durante il caricamento di un pad restano accorpate fino al completamento; un caricamento precedente a STOP TUTTO non altera lo stato di una richiesta successiva.
 - Se l'uscita salvata non e piu disponibile, l'app la segnala e attende una nuova selezione in **Audio e uscite**. Non passa automaticamente all'uscita predefinita di Windows. Una configurazione delle cuffie fallita lascia entrambe le uscite chiuse, evitando uno stato parziale.
-- I pad premuti hanno un worker di decodifica separato dal precaricamento della pagina. Il precaricamento dei primi sei pad viene avviato una volta per pagina o revisione dei file, senza ripetersi a ogni modifica di uno slider.
+- I pad premuti hanno un worker di decodifica separato dal precaricamento della pagina. La preparazione del profilo viene aggiornata quando cambiano pagina, associazioni o revisione dei file, senza ripetersi a ogni modifica di uno slider.
 - La finestra puo essere ridotta fino a 960 × 640; le barre di scorrimento permettono di raggiungere i controlli quando lo schermo e piu piccolo. I pad visibili possono ricevere il focus con Tab ed essere attivati tenendo premuto Invio; espongono nome, stato e azioni ai lettori di schermo. Nella vista Tastiera, usa le frecce per scegliere un tasto, Invio per usarlo e Maiusc+F10 per associarlo al pad selezionato.
 
 ## Novità 0.5: cache LRU e precaricamento
 
-La cache PCM da 384 MiB elimina automaticamente i clip meno usati quando serve spazio. Non elimina i clip presenti in una coda o in una riproduzione; se la memoria è tutta occupata da suoni attivi, segnala di fermarli e riprovare. I primi sei pad visibili nella soundboard vengono decodificati in background. La prima pressione su un clip ancora in caricamento viene accodata una sola volta.
+La cache PCM da 384 MiB elimina automaticamente i clip meno usati quando serve spazio. Non elimina i clip presenti in una coda o in una riproduzione; se la memoria è tutta occupata da suoni attivi, segnala di fermarli e riprovare. I suoni associati ai tasti, i pad visibili e gli altri file del profilo vengono preparati in background, nei limiti della cache. La prima pressione su un clip ancora in caricamento viene accodata una sola volta.
 
 ## Novità 0.4: controllo audio e profili
 
@@ -161,7 +219,7 @@ Per inviare i suoni a Discord puoi scegliere CABLE Input come uscita principale,
 
 Le due uscite usano callback e clock separati. Il motore riproduce gli stessi comandi su entrambe, ma non offre sincronizzazione precisa tra schede audio diverse. Le latenze mostrate sono quelle riferite dal driver, non misure del ritardo fino a Discord.
 
-Decodifica in sottofondo, durata massima 3 minuti per file e cache PCM LRU da 384 MiB. La cache espelle il clip meno usato che non è trattenuto da una voce o da un comando audio in coda; i riferimenti vengono rilasciati dal callback audio, senza liberare memoria nel thread audio. I primi sei pad visibili vengono precaricati in background. La prima pressione su un file non ancora caricato attende la decodifica; ulteriori pressioni durante quel caricamento vengono accorpate. Se tutti i clip in memoria sono ancora in uso, l'app chiede di fermare i suoni e riprovare. Lo stop rende espellibili le voci al successivo callback audio; un loop rilasciato prima del caricamento non parte in ritardo.
+Decodifica in sottofondo, caricamento dei soli primi 3 minuti di ogni file (gli audio più lunghi vengono tagliati automaticamente senza modificare il file originale) e cache PCM LRU da 384 MiB. La cache espelle il clip meno usato che non è trattenuto da una voce o da un comando audio in coda; i riferimenti vengono rilasciati dal callback audio, senza liberare memoria nel thread audio. Il profilo viene preparato in background anche nella vista Tastiera, dando precedenza alle associazioni e ai pad visibili; gli altri file non espellono i clip già pronti. La prima pressione su un file non ancora caricato attende la decodifica; ulteriori pressioni durante quel caricamento vengono accorpate. Se tutti i clip in memoria sono ancora in uso, l'app chiede di fermare i suoni e riprovare. Lo stop rende espellibili le voci al successivo callback audio; un loop rilasciato prima del caricamento non parte in ritardo.
 
 Il mixer usa una coda di comandi e un numero fisso di voci; il callback non alloca memoria e non prende mutex. In Spam, il livello delle copie dello stesso pad viene bilanciato con metà compensazione in decibel, lasciando un aumento moderato del volume: due copie coerenti risultano circa 1,41 volte una copia, tre circa 1,73 volte, prima del limiter. La transizione resta breve e una copia superstite recupera il proprio livello; pad diversi non vengono normalizzati insieme. Il limiter finale protegge i picchi del mix complessivo. Le copie in opposizione di fase possono ancora cancellarsi completamente.
 

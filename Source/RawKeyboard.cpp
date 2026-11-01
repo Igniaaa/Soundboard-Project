@@ -1,5 +1,6 @@
 #include "RawKeyboard.h"
 #include "KeyboardBridge.h"
+#include "KeyboardScan.h"
 #if JUCE_WINDOWS
 #include <windows.h>
 #include <setupapi.h>
@@ -32,6 +33,7 @@ struct RawKeyboard::Impl : juce::Timer, std::enable_shared_from_this<Impl>
     juce::String selectedId, selectedHardwareId, lastError;
     bool requested = false;
     bool identifying = false;
+    PhysicalKeyboardInput localKeys;
     unsigned mutationDepth = 0;
     bool notifying = false;
     bool statePending = false;
@@ -40,6 +42,21 @@ struct RawKeyboard::Impl : juce::Timer, std::enable_shared_from_this<Impl>
 
     bool active() const { return requested && !identifying && bridge.active(); }
     bool starting() const { return requested && !identifying && bridge.starting(); }
+
+    void localInput(std::uintptr_t device, unsigned scan, unsigned flags, bool down)
+    {
+        const auto key = localKeys.input(device, scan, flags, down);
+        if (key.scan == 0) return;
+        if (parent == nullptr || requested || identifying || bridge.active() || bridge.starting()) return;
+        const auto code = juce::String::formatted("%04X:%u", key.scan, key.flags);
+        const auto callback = parent->onLocalKey;
+        if (callback) callback(code, key.down);
+        if (key.pulse && parent != nullptr)
+        {
+            const auto released = parent->onLocalKey;
+            if (released) released(code, false);
+        }
+    }
 
     void notifyState()
     {
@@ -178,13 +195,18 @@ struct RawKeyboard::Impl : juce::Timer, std::enable_shared_from_this<Impl>
             {
                 const auto& keyboard = input.data.keyboard;
                 unsigned scan = keyboard.MakeCode;
-                if (scan == 0) scan = MapVirtualKeyW(keyboard.VKey, MAPVK_VK_TO_VSC_EX) & 0xff;
+                auto flags = static_cast<unsigned>(keyboard.Flags & (RI_KEY_E0 | RI_KEY_E1));
+                if (scan == 0)
+                {
+                    const auto mapped = MapVirtualKeyW(keyboard.VKey, MAPVK_VK_TO_VSC_EX);
+                    scan = mapped & 0xff;
+                    if (flags == 0) flags = (mapped & 0xff00) == 0xe000 ? 2u : (mapped & 0xff00) == 0xe100 ? 4u : 0u;
+                }
                 if (scan != 0 && scan != 0xff && keyboard.VKey < 255)
                 {
-                    const auto flags = keyboard.Flags & (RI_KEY_E0 | RI_KEY_E1);
                     const bool down = (keyboard.Flags & RI_KEY_BREAK) == 0;
-                    // Raw Input is only for identification. Pad events come
-                    // exclusively from the bridge, including during startup.
+                    self->localInput(reinterpret_cast<std::uintptr_t>(input.header.hDevice), scan, flags, down);
+                    // Dedicated pad events still come exclusively from the bridge.
                     if (self->parent != nullptr && self->identifying && !self->requested && scan == 0x58 && flags == 0 && !down)
                     {
                         self->identifying = false;
@@ -202,6 +224,7 @@ struct RawKeyboard::Impl : juce::Timer, std::enable_shared_from_this<Impl>
                 Mutation mutation(*self);
                 const bool wasCapturing = self->requested || self->bridge.active() || self->bridge.starting();
                 self->stopCapture();
+                self->localKeys.clear();
                 self->identifying = false;
                 self->selectedId.clear(); self->selectedHardwareId.clear();
                 if (wasCapturing) self->lastError = "Dispositivi tastiera cambiati: seleziona e attiva nuovamente la tastiera dedicata.";

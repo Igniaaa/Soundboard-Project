@@ -23,6 +23,9 @@ public:
     bool identifying() const;
     void identify(bool);
     std::function<void(const juce::String&, bool)> onKey;
+    // Physical foreground keys; caller owns focus/text-entry policy. Never used
+    // as a fallback for dedicated capture or delivered during its activation.
+    std::function<void(const juce::String&, bool)> onLocalKey;
     std::function<void(const juce::String&)> onIdentify;
     std::function<void()> onDevicesChanged;
     std::function<void()> onCaptureStateChanged;

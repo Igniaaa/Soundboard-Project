@@ -139,12 +139,12 @@ std::unique_ptr<juce::AccessibilityHandler> PadTile::createAccessibilityHandler(
 const std::vector<std::vector<KeyboardKey>>& keyboardLayout()
 {
     static const std::vector<std::vector<KeyboardKey>> rows {
-        {{"Esc","0001:0"},{"F1","003B:0"},{"F2","003C:0"},{"F3","003D:0"},{"F4","003E:0"},{"F5","003F:0"},{"F6","0040:0"},{"F7","0041:0"},{"F8","0042:0"},{"F9","0043:0"},{"F10","0044:0"},{"F11","0057:0"},{"F12","0058:0"}},
-        {{"\\","0029:0"},{"1","0002:0"},{"2","0003:0"},{"3","0004:0"},{"4","0005:0"},{"5","0006:0"},{"6","0007:0"},{"7","0008:0"},{"8","0009:0"},{"9","000A:0"},{"0","000B:0"},{"'","000C:0"},{utf8("ì"),"000D:0"}},
-        {{"Tab","000F:0",1.3f},{"Q","0010:0"},{"W","0011:0"},{"E","0012:0"},{"R","0013:0"},{"T","0014:0"},{"Y","0015:0"},{"U","0016:0"},{"I","0017:0"},{"O","0018:0"},{"P","0019:0"},{utf8("è"),"001A:0"},{"+","001B:0"}},
-        {{"Caps","003A:0",1.5f},{"A","001E:0"},{"S","001F:0"},{"D","0020:0"},{"F","0021:0"},{"G","0022:0"},{"H","0023:0"},{"J","0024:0"},{"K","0025:0"},{"L","0026:0"},{utf8("ò"),"0027:0"},{utf8("à"),"0028:0"},{"Enter","001C:0",1.3f}},
-        {{"Shift","002A:0",1.7f},{"<","0056:0"},{"Z","002C:0"},{"X","002D:0"},{"C","002E:0"},{"V","002F:0"},{"B","0030:0"},{"N","0031:0"},{"M","0032:0"},{",","0033:0"},{".","0034:0"},{"-","0035:0"}},
-        {{"Ctrl","001D:0",1.5f},{"Alt","0038:0",1.5f},{"Spazio","0039:0",6},{"AltGr","0038:2",1.5f},{"Ctrl","001D:2",1.5f}}
+        {{"Esc","0001:0"},{"","",1},{"F1","003B:0"},{"F2","003C:0"},{"F3","003D:0"},{"F4","003E:0"},{"","",0.5f},{"F5","003F:0"},{"F6","0040:0"},{"F7","0041:0"},{"F8","0042:0"},{"","",0.5f},{"F9","0043:0"},{"F10","0044:0"},{"F11","0057:0"},{"F12","0058:0"},{"","",0.5f},{"Stamp","0037:2"},{"Scroll","0046:0"},{"Pausa","0045:4"},{"","",4.5f}},
+        {{"\\","0029:0"},{"1","0002:0"},{"2","0003:0"},{"3","0004:0"},{"4","0005:0"},{"5","0006:0"},{"6","0007:0"},{"7","0008:0"},{"8","0009:0"},{"9","000A:0"},{"0","000B:0"},{"'","000C:0"},{utf8("ì"),"000D:0"},{"Back","000E:0",2},{"","",0.5f},{"Ins","0052:2"},{"Home","0047:2"},{"PgSu","0049:2"},{"","",0.5f},{"Num","0045:0"},{"Num /","0035:2"},{"Num *","0037:0"},{"Num -","004A:0"}},
+        {{"Tab","000F:0",1.5f},{"Q","0010:0"},{"W","0011:0"},{"E","0012:0"},{"R","0013:0"},{"T","0014:0"},{"Y","0015:0"},{"U","0016:0"},{"I","0017:0"},{"O","0018:0"},{"P","0019:0"},{utf8("è"),"001A:0"},{"+","001B:0"},{"Invio","001C:0",1.5f,2},{"","",0.5f},{"Canc","0053:2"},{"Fine","004F:2"},{"PgGiu","0051:2"},{"","",0.5f},{"Num 7","0047:0"},{"Num 8","0048:0"},{"Num 9","0049:0"},{"Num +","004E:0",1,2}},
+        {{"Caps","003A:0",1.5f},{"A","001E:0"},{"S","001F:0"},{"D","0020:0"},{"F","0021:0"},{"G","0022:0"},{"H","0023:0"},{"J","0024:0"},{"K","0025:0"},{"L","0026:0"},{utf8("ò"),"0027:0"},{utf8("à"),"0028:0"},{utf8("ù"),"002B:0"},{"","",5.5f},{"Num 4","004B:0"},{"Num 5","004C:0"},{"Num 6","004D:0"},{"","",1}},
+        {{"Shift S","002A:0",1.25f},{"<","0056:0"},{"Z","002C:0"},{"X","002D:0"},{"C","002E:0"},{"V","002F:0"},{"B","0030:0"},{"N","0031:0"},{"M","0032:0"},{",","0033:0"},{".","0034:0"},{"-","0035:0"},{"Shift D","0036:0",2.75f},{"","",1.5f},{"Su","0048:2"},{"","",1.5f},{"Num 1","004F:0"},{"Num 2","0050:0"},{"Num 3","0051:0"},{"Num Inv","001C:2",1,2}},
+        {{"Ctrl S","001D:0",1.25f},{"Win S","005B:2",1.25f},{"Alt","0038:0",1.25f},{"Spazio","0039:0",6.25f},{"AltGr","0038:2",1.25f},{"Win D","005C:2",1.25f},{"Menu","005D:2",1.25f},{"Ctrl D","001D:2",1.25f},{"","",0.5f},{"Sin","004B:2"},{"Giu","0050:2"},{"Des","004D:2"},{"","",0.5f},{"Num 0","0052:0",2},{"Num .","0053:0"},{"","",1}}
     };
     return rows;
 }
@@ -174,6 +174,14 @@ void KeyboardView::updateAccessibleKey()
     setDescription(description);
     if (changed)
         if (auto* handler = getAccessibilityHandler()) handler->notifyAccessibilityEvent(juce::AccessibilityEvent::titleChanged);
+    if (auto* viewport = findParentComponentOfClass<juce::Viewport>())
+        for (const auto& hitbox : hitboxes) if (hitbox.second == key.code)
+        {
+            const auto visible = viewport->getViewArea();
+            const int x = hitbox.first.getX() < visible.getX() ? static_cast<int>(hitbox.first.getX())
+                : hitbox.first.getRight() > visible.getRight() ? static_cast<int>(std::ceil(hitbox.first.getRight())) - visible.getWidth() : visible.getX();
+            viewport->setViewPosition(x, visible.getY());
+        }
     repaint();
 }
 bool KeyboardView::keyPressed(const juce::KeyPress& key)
@@ -183,11 +191,29 @@ bool KeyboardView::keyPressed(const juce::KeyPress& key)
     if (code == juce::KeyPress::leftKey || code == juce::KeyPress::rightKey
         || code == juce::KeyPress::upKey || code == juce::KeyPress::downKey)
     {
-        if (code == juce::KeyPress::leftKey) focusedColumn = juce::jmax(0, focusedColumn - 1);
-        if (code == juce::KeyPress::rightKey) focusedColumn = juce::jmin(static_cast<int>(rows[static_cast<std::size_t>(focusedRow)].size()) - 1, focusedColumn + 1);
-        if (code == juce::KeyPress::upKey) focusedRow = juce::jmax(0, focusedRow - 1);
-        if (code == juce::KeyPress::downKey) focusedRow = juce::jmin(static_cast<int>(rows.size()) - 1, focusedRow + 1);
-        focusedColumn = juce::jmin(focusedColumn, static_cast<int>(rows[static_cast<std::size_t>(focusedRow)].size()) - 1);
+        if (code == juce::KeyPress::leftKey || code == juce::KeyPress::rightKey)
+        {
+            const int direction = code == juce::KeyPress::leftKey ? -1 : 1;
+            const auto& row = rows[static_cast<std::size_t>(focusedRow)];
+            for (int next = focusedColumn + direction; next >= 0 && next < static_cast<int>(row.size()); next += direction)
+                if (row[static_cast<std::size_t>(next)].code.isNotEmpty()) { focusedColumn = next; break; }
+        }
+        else
+        {
+            float target = 0;
+            const auto& oldRow = rows[static_cast<std::size_t>(focusedRow)];
+            for (int i = 0; i < focusedColumn; ++i) target += oldRow[static_cast<std::size_t>(i)].width;
+            target += oldRow[static_cast<std::size_t>(focusedColumn)].width * 0.5f;
+            focusedRow = juce::jlimit(0, static_cast<int>(rows.size()) - 1, focusedRow + (code == juce::KeyPress::upKey ? -1 : 1));
+            float x = 0, distance = std::numeric_limits<float>::max();
+            const auto& row = rows[static_cast<std::size_t>(focusedRow)];
+            for (std::size_t i = 0; i < row.size(); ++i)
+            {
+                const float next = std::abs(x + row[i].width * 0.5f - target);
+                if (row[i].code.isNotEmpty() && next < distance) { focusedColumn = static_cast<int>(i); distance = next; }
+                x += row[i].width;
+            }
+        }
         updateAccessibleKey();
         return true;
     }
@@ -241,14 +267,16 @@ void KeyboardView::paint(juce::Graphics& g)
     hitboxes.clear();
     const auto& rows = keyboardLayout();
     const float rowHeight = static_cast<float>(getHeight()) / static_cast<float>(rows.size());
+    float total = 0;
+    for (const auto& row : rows) { float width = 0; for (const auto& key : row) width += key.width; total = std::max(total, width); }
+    const float unit = static_cast<float>(getWidth()) / total;
     for (std::size_t row = 0; row < rows.size(); ++row)
     {
-        float total = 0; for (const auto& key : rows[row]) total += key.width;
-        const float unit = static_cast<float>(getWidth()) / total;
         float x = 0;
         for (const auto& key : rows[row])
         {
-            auto box = juce::Rectangle<float>(x, row * rowHeight, unit * key.width, rowHeight).reduced(3);
+            if (key.code.isEmpty()) { x += unit * key.width; continue; }
+            auto box = juce::Rectangle<float>(x, row * rowHeight, unit * key.width, rowHeight * key.height).reduced(2);
             const Pad* pad = nullptr;
             if (profile) for (const auto& p : profile->pads) if (p.key == key.code) { pad = &p; break; }
             g.setColour(held == key.code ? palette::accent.withAlpha(0.3f) : pad ? palette::tile : palette::panel);
@@ -257,7 +285,8 @@ void KeyboardView::paint(juce::Graphics& g)
                 : key.code == selectedKey ? palette::accent : palette::line);
             g.drawRoundedRectangle(box, 6, 1);
             g.setFont(font(12, true)); g.setColour(pad ? palette::accent : palette::muted);
-            g.drawText(key.label, box.reduced(7).removeFromTop(20), juce::Justification::centredLeft);
+            g.drawFittedText(key.label.startsWith("Num ") ? key.label.substring(4) : key.label,
+                box.reduced(4).removeFromTop(20).toNearestInt(), juce::Justification::centredLeft, 1);
             if (pad)
             {
                 g.setFont(font(10)); g.setColour(palette::text);
@@ -347,10 +376,13 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
     keyboardHelp.setJustificationType(juce::Justification::topLeft);
     for (juce::Component* component : std::initializer_list<juce::Component*>{&profiles,&globalMode,&outputDevice,&monitorDevice,&inputDevice,&padMode,&search,&padName,
         &boardTab,&audioTab,&importButton,&newProfile,&renameProfile,&stopButton,&djButton,&previous,&next,&tilesButton,&keyboardButton,
-        &bindButton,&unbindButton,&applyButton,&scanButton,&favoriteButton,&favoritesOnly,&monitorToggle,&keyboard,
+        &bindButton,&unbindButton,&applyButton,&scanButton,&favoriteButton,&favoritesOnly,&monitorToggle,&keyboardViewport,
         &keyboardTab,&keyboardDevice,&identifyKeyboard,&scanKeyboards,&captureKeyboard,&replaceFile,&editorButton,
         &deleteProfile,&sortBy,&sortDirection,&refreshFolders,&volumeOverride,&globalPitchToggle,&padFolderFilter,
         &microphoneToggle,&microphoneMonitorToggle}) addAndMakeVisible(component);
+    keyboardViewport.setViewedComponent(&keyboard, false);
+    keyboardViewport.setScrollBarsShown(false, true);
+    keyboardViewport.setScrollOnDragMode(juce::Viewport::ScrollOnDragMode::never);
     editorViewport.setViewedComponent(&editorPanel, false);
     editorViewport.setScrollBarsShown(true, false);
     addAndMakeVisible(editorViewport); editorViewport.setVisible(false);
@@ -502,17 +534,18 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
     identifyKeyboard.onClick = [this]
     {
         if (rawKeyboard.identifying()) { rawKeyboard.identify(false); updateKeyboardStatus(); return; }
-        stopAll(); heldKeys.clear(); keyboardArmed = false; rawKeyboard.identify(true); captureKeyboard.setToggleState(false, juce::dontSendNotification);
+        stopAll(); heldKeys.clear(); rawKeyboard.identify(true); captureKeyboard.setToggleState(false, juce::dontSendNotification);
         updateKeyboardStatus();
         keyboardStatus.setText("Premi e rilascia F12 sulla tastiera da dedicare ai suoni.", juce::dontSendNotification);
     };
     captureKeyboard.onClick = [this]
     {
-        stopAll(); heldKeys.clear(); keyboardArmed = false;
+        stopAll(); heldKeys.clear();
         rawKeyboard.identify(false); rawKeyboard.enable(captureKeyboard.getToggleState());
         captureKeyboard.setToggleState(rawKeyboard.enabled() || rawKeyboard.activating(), juce::dontSendNotification);
         updateKeyboardStatus(); grabKeyboardFocus();
     };
+    rawKeyboard.onLocalKey = [this](const juce::String& key, bool down) { handleLocalKey(key, down); };
     rawKeyboard.onKey = [this](const juce::String& key, bool down)
     {
         if (hasKeyboardFocus(true) && textEditorFocused() && !binding) { if (!down) handleKey(key, false); return; }
@@ -523,7 +556,7 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
     {
         const bool requested = rawKeyboard.enabled() || rawKeyboard.activating();
         captureKeyboard.setToggleState(requested, juce::dontSendNotification);
-        if (!requested) { stopAll(); heldKeys.clear(); keyboardArmed = false; }
+        if (!requested) { stopAll(); heldKeys.clear(); }
         updateKeyboardStatus();
         if (!requested && rawKeyboard.error().isNotEmpty()) setStatus(rawKeyboard.error(), true);
     };
@@ -534,7 +567,7 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
     };
     rawKeyboard.onDevicesChanged = [this]
     {
-        stopAll(); captureKeyboard.setToggleState(false, juce::dontSendNotification); refreshKeyboards();
+        stopAll(); heldKeys.clear(); captureKeyboard.setToggleState(false, juce::dontSendNotification); refreshKeyboards();
         keyboardStatus.setText("Dispositivi cambiati: verifica la selezione e riattiva la tastiera.", juce::dontSendNotification);
     };
     importButton.onClick = [this] { chooseAudioFolder(); };
@@ -610,10 +643,11 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
 MainComponent::~MainComponent()
 {
     rawKeyboard.onCaptureStateChanged = {};
-    rawKeyboard.enable(false); rawKeyboard.onKey = {}; rawKeyboard.onIdentify = {}; rawKeyboard.onDevicesChanged = {};
+    rawKeyboard.onLocalKey = {}; rawKeyboard.enable(false); rawKeyboard.onKey = {}; rawKeyboard.onIdentify = {}; rawKeyboard.onDevicesChanged = {};
     if (scanCancelled) scanCancelled->store(true);
     folderLoader.removeAllJobs(true, -1);
-    stopTimer(); ++playGeneration; playbackLoader.removeAllJobs(true, -1); preloadLoader.removeAllJobs(true, -1);
+    stopTimer(); ++playGeneration; ++preloadGeneration;
+    playbackLoader.removeAllJobs(true, -1); preloadLoader.removeAllJobs(true, -1);
     waveformLoader.removeAllJobs(true, -1);
     saveLoader.removeAllJobs(false, -1);
     if (!smokeTest && writable && (dirty || savedGeneration.load() < saveGeneration.load()))
@@ -728,7 +762,8 @@ void MainComponent::resized()
     const int width = (grid.getWidth() - (columns - 1) * spacing) / columns;
     const int height = (grid.getHeight() - (rows - 1) * spacing) / rows;
     for (int i = 0; i < 24; ++i) tiles[i]->setBounds(grid.getX() + (i % columns) * (width + spacing), grid.getY() + (i / columns) * (height + spacing), width, height);
-    keyboard.setBounds(grid);
+    keyboardViewport.setBounds(grid);
+    keyboard.setSize(juce::jmax(800, grid.getWidth()), juce::jmax(360, grid.getHeight() - keyboardViewport.getScrollBarThickness()));
     auto detail = inspector.reduced(17);
     const int x = detail.getX(), w = detail.getWidth();
     padHeading.setBounds(x, 129 - inspectorDetailShift, w, 22); padName.setBounds(x, 162 - inspectorDetailShift, w, 34);
@@ -898,8 +933,8 @@ void MainComponent::rebuildTiles()
     }
     if (selectedPad()) padHeading.setText("SUONO #" + juce::String(padNumber(selection)), juce::dontSendNotification);
     keyboard.profile = &library.current(); keyboard.padNumbers = padNumbers;
-    keyboard.setVisible(view == 0 && keyboardMode); keyboard.updateAccessibleKey(); repaint();
-    if (view == 0 && !keyboardMode && currentPage != nullptr) preloadVisiblePage(currentPage->indices);
+    keyboardViewport.setVisible(view == 0 && keyboardMode); keyboard.updateAccessibleKey(); repaint();
+    preloadProfile(view == 0 && !keyboardMode && currentPage != nullptr ? currentPage->indices : std::vector<int>{});
 }
 Pad* MainComponent::selectedPad()
 {
@@ -976,12 +1011,17 @@ void MainComponent::bindKey(const juce::String& key)
     keyIndex.erase(pad->key);
     pad->key = key; pad->keyLabel = keyLabel(key); binding = false;
     keyIndex[key] = selection;
+    lastPreloadPlan.clear(); preloadProfile({});
     save(); selectPad(selection); setStatus(rawKeyboard.enabled() ? "Tasto associato alla tastiera dedicata." : "Tasto associato. Le scorciatoie locali richiedono l'app in primo piano.");
 }
 void MainComponent::setStatus(const juce::String& text, bool error)
 {
+    statusMessage = text; statusIsError = error;
+    displayedPreloadRemaining = preloadRemaining.load();
+    const auto displayed = text + (displayedPreloadRemaining > 0
+        ? "  /  Preparazione suoni: " + juce::String(displayedPreloadRemaining) : juce::String());
     statusLabel.setColour(juce::Label::textColourId, error ? palette::warning : palette::muted);
-    statusLabel.setText(text, juce::dontSendNotification); statusLabel.setTooltip(text);
+    statusLabel.setText(displayed, juce::dontSendNotification); statusLabel.setTooltip(displayed);
 }
 void MainComponent::refreshDevices()
 {
@@ -1007,7 +1047,7 @@ void MainComponent::refreshDevices()
 void MainComponent::refreshKeyboards()
 {
     rawKeyboard.enable(false); rawKeyboard.identify(false);
-    keyboardArmed = false; heldKeys.clear();
+    heldKeys.clear();
     keyboardDevices = RawKeyboard::devices();
     keyboardDevice.clear(juce::dontSendNotification);
     int selected = 0;
@@ -1280,11 +1320,15 @@ void MainComponent::timerCallback()
         }
     }
     keyStateChanged(false, this);
+    if (preloadRemaining.load() != displayedPreloadRemaining) setStatus(statusMessage, statusIsError);
     if (searchPending && juce::Time::getMillisecondCounter() - searchChangedAt >= 150)
     { searchPending = false; rebuildTiles(); }
     if (dirty && ++dirtyTicks >= 20) { dirtyTicks = 0; save(); }
     const auto error = audio.main.takeError(); const auto monitorError = audio.monitor.takeError();
-    if (error.isNotEmpty() || monitorError.isNotEmpty()) { stopAll(); setStatus("Dispositivo audio: " + error + " " + monitorError, true); }
+    const auto streamError = audio.takeStreamingError();
+    if (streamError.isNotEmpty()) lastPreloadPlan.clear();
+    if (error.isNotEmpty() || monitorError.isNotEmpty() || streamError.isNotEmpty())
+    { stopAll(); setStatus("Audio: " + error + " " + monitorError + " " + streamError, true); }
     repaint(getWidth() - 220, getHeight() - 66, 212, 60);
 }
 void MainComponent::chooseAudioFolder()

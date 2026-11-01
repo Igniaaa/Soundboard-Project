@@ -45,7 +45,7 @@ private:
     bool held = false;
     bool keyboardHeld = false;
 };
-struct KeyboardKey { juce::String label, code; float width = 1; };
+struct KeyboardKey { juce::String label, code; float width = 1, height = 1; };
 const std::vector<std::vector<KeyboardKey>>& keyboardLayout();
 class KeyboardView final : public juce::Component
 {
@@ -65,6 +65,7 @@ public:
     void updateAccessibleKey();
     int padNumber(int index) const;
 private:
+    friend juce::Result runFullKeyboardTests(const juce::File&);
     juce::String focusedCode() const;
     std::vector<std::pair<juce::Rectangle<float>, juce::String>> hitboxes;
     juce::String held, keyboardHeldCode;
@@ -88,6 +89,9 @@ public:
     void requestClose(std::function<void()> onSaved);
 private:
     friend juce::Result runPadOrderingUiTests();
+    friend juce::Result runFullKeyboardTests(const juce::File&);
+    friend juce::Result runPreloadTests(const juce::File&);
+    friend juce::Result runPreloadProbe(juce::StringArray&);
     using juce::Component::keyPressed;
     using juce::Component::keyStateChanged;
     void timerCallback() override;
@@ -97,10 +101,12 @@ private:
     void updateEditorViewportBounds();
     void selectPad(int);
     void rebuildTiles();
-    void preloadVisiblePage(const std::vector<int>& padIndices);
+    void preloadProfile(const std::vector<int>& visiblePadIndices);
     void setView(int);
     void triggerPad(int, bool);
     void handleKey(const juce::String&, bool);
+    void handleLocalKey(const juce::String&, bool);
+    bool localKeyIsNavigation(const juce::String&, const juce::Component* focus, bool shift) const;
     void stopAll();
     void save();
     bool applyAudio();
@@ -191,20 +197,25 @@ private:
     juce::Label volumeLabel, speedLabel, fadeLabel, padModeLabel;
     std::array<std::unique_ptr<PadTile>, 24> tiles;
     KeyboardView keyboard;
+    juce::Viewport keyboardViewport;
     std::vector<int> filtered, padNumbers;
     std::map<juce::String, int> keyIndex;
     std::set<juce::String> heldKeys;
     PadPressState pressedPads;
     std::set<int> pendingPads;
-    std::set<juce::String> preloadingFiles;
-    juce::String lastPreloadPage;
+    juce::String lastPreloadPlan;
+    std::atomic<std::uint64_t> preloadGeneration {0};
+    std::atomic<int> preloadRemaining {0};
+    std::mutex preloadStateLock;
+    juce::String statusMessage;
+    int displayedPreloadRemaining = 0;
+    bool statusIsError = false;
     juce::String lastSearch;
     std::uint32_t searchChangedAt = 0;
     bool searchPending = false;
     int view = 0, page = 0, selection = -1, dirtyTicks = 0;
     bool keyboardMode = false, binding = false, updating = false, smokeTest = false, writable = true, dirty = false;
     bool djMouseDown = false, djKeyDown = false;
-    bool keyboardArmed = false;
     bool rawKeyboardReady = false;
     int missingFiles = 0;
     std::uint64_t playGeneration = 0;

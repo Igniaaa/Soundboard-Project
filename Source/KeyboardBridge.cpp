@@ -321,6 +321,7 @@ int runKeyboardBroker(std::uintptr_t mappingHandle, std::uintptr_t parentHandle,
     if (read32(shared.stop) || WaitForSingleObject(parent.value, 0) != WAIT_TIMEOUT
         || startupHeartbeat.isExpired()) return abort("Attivazione tastiera annullata: collegamento non disponibile.");
     KeyboardBlockSession policy;
+    KeyboardScanSequence sequence;
     policy.setBackendAvailable(true); policy.select(static_cast<std::uintptr_t>(selectedSlot));
     if (!policy.confirmAllKeysReleased() || !policy.arm(now())) return abort("Impossibile armare la sessione tastiera.");
     capture.slot = selectedSlot;
@@ -380,13 +381,11 @@ int runKeyboardBroker(std::uintptr_t mappingHandle, std::uintptr_t parentHandle,
             forwardRetiring(shared, backend, device, stroke);
             return abort("Pacchetto tastiera non valido: cattura disattivata.");
         }
-        const auto decision = policy.input(static_cast<std::uintptr_t>(device), packet.scan, packet.prefix, packet.down != 0, now(), room(shared));
-        if (!decision.suppress)
+        if (!deliverPhysicalKey(shared, policy, sequence, static_cast<std::uintptr_t>(device), packet, now()))
         {
             forwardRetiring(shared, backend, device, stroke);
             return abort("Sessione tastiera interrotta o coda piena: pad fermati.");
         }
-        if (decision.event != KeyboardBlockSession::none && !push(shared, packet)) return abort("Coda tastiera piena: cattura disattivata e pad fermati.");
     }
 }
 
