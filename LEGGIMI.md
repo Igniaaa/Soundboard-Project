@@ -23,7 +23,7 @@ per la forma d'onda e lo scrub, e può quindi aumentare la memoria occupata.
 Le due copie principali sono identiche alla build provata, ora conservata in
 **old-builds/DualDeckJuce-0.7-streaming-test.exe**. Anche le precedenti prove
 di primo avvio e tastiera completa sono archiviate in **old-builds**.
-Dettagli: [VERIFICHE-STREAMING.md](VERIFICHE-STREAMING.md).
+Dettagli: [VERIFICHE-STREAMING.md](Changelogs/VERIFICHE-STREAMING.md).
 
 ## Preparazione del primo avvio — versione di prova, 31 ottobre 2026
 
@@ -36,7 +36,7 @@ un suono non preparato o espulso dalla cache deve ancora essere decodificato.
 La libreria attuale supera quel limite: nella prova sono risultati pronti
 93 suoni su 329, inclusi tutti e tre quelli associati ai tasti.
 Il limite a 180 secondi, il layout completo e le associazioni sono conservati.
-Misure e verifiche: [VERIFICHE-PRIMO-AVVIO.md](VERIFICHE-PRIMO-AVVIO.md).
+Misure e verifiche: [VERIFICHE-PRIMO-AVVIO.md](Changelogs/VERIFICHE-PRIMO-AVVIO.md).
 
 ## Tastiera completa al 100% — versione di prova, 31 ottobre 2026
 
@@ -55,7 +55,7 @@ i normali effetti dei tasti in Windows restano attivi. Quando un pad o la tastie
 Il precedente riferimento con il solo taglio a 180 secondi è conservato in
 **old-builds/DualDeckJuce-0.7-180s-test.exe**. La versione principale attuale
 include anche il layout completo e conserva le associazioni già salvate.
-Dettagli delle prove: [VERIFICHE-TASTIERA-COMPLETA.md](VERIFICHE-TASTIERA-COMPLETA.md).
+Dettagli delle prove: [VERIFICHE-TASTIERA-COMPLETA.md](Changelogs/VERIFICHE-TASTIERA-COMPLETA.md).
 
 ## Taglio automatico a 180 secondi — 31 ottobre 2026
 
@@ -76,7 +76,7 @@ Il freeze approvato è invariato; la copia
 **old-builds/DualDeckJuce-0.7-freeze-range.exe** resta il riferimento precedente.
 Dopo ogni approvazione, le copie di prova vengono spostate in `old-builds`;
 in radice restano i due eseguibili principali della versione approvata.
-Dettagli e limiti in [VERIFICHE-AUDIO-REVIEW.md](VERIFICHE-AUDIO-REVIEW.md).
+Dettagli e limiti in [VERIFICHE-AUDIO-REVIEW.md](Changelogs/VERIFICHE-AUDIO-REVIEW.md).
 
 ## Revisione audio — 27 ottobre 2026 (storico)
 
@@ -93,8 +93,8 @@ e smorza gli acuti nelle ripetizioni, per ridurre la coda rada e ronzante
 segnalata anche con il solo effetto. Cinque suite CTest passano; il timbro
 metallico segnalato dall'utente resta da verificare all'ascolto e i buffer
 piccoli non sono certificati senza dropout.
-Dettagli in [VERIFICHE-AUDIO-REVIEW.md](VERIFICHE-AUDIO-REVIEW.md).
-Ultima revisione del riverbero e confronto su Bonk in [VERIFICHE-RIVERBERO.md](VERIFICHE-RIVERBERO.md).
+Dettagli in [VERIFICHE-AUDIO-REVIEW.md](Changelogs/VERIFICHE-AUDIO-REVIEW.md).
+Ultima revisione del riverbero e confronto su Bonk in [VERIFICHE-RIVERBERO.md](Changelogs/VERIFICHE-RIVERBERO.md).
 Per preparare i sorgenti per GitHub, vedere [GITHUB.md](GITHUB.md).
 
 Per l'architettura, i flussi di esecuzione e i criteri per estendere i sorgenti, consulta la [documentazione del codice](DOCUMENTAZIONE-CODICE.md).
@@ -234,7 +234,7 @@ Il blocco della tastiera secondaria è incluso nella versione approvata e richie
 
 ## Compilazione e verifiche
 
-L'esito verificato della versione 0.7 è in [VERIFICHE-0.7.md](VERIFICHE-0.7.md). I rapporti [VERIFICHE-0.6.md](VERIFICHE-0.6.md) e [VERIFICHE-0.5.md](VERIFICHE-0.5.md) restano come cronologia.
+L'esito verificato della versione 0.7 è in [VERIFICHE-0.7.md](Changelogs/VERIFICHE-0.7.md). I rapporti [VERIFICHE-0.6.md](Changelogs/VERIFICHE-0.6.md) e [VERIFICHE-0.5.md](Changelogs/VERIFICHE-0.5.md) restano come cronologia.
 
 Sul PC di sviluppo restano utilizzabili gli strumenti portatili già in `tools`.
 Per una nuova checkout usare Visual Studio/Build Tools 2022 con C++ x64 e Windows

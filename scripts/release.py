@@ -17,10 +17,13 @@ ROOT_FILES = (
     "CHANGELOG.md", "RELEASE-PLAN.md", "VERIFICA-RELEASE.md", "JUCE-LICENSE.md", "LEGGIMI.md", "GITHUB.md",
     ".gitignore", ".gitattributes", "Setup-KeyboardBridge.ps1",
     "Inspect-KeyboardDriver.ps1", "Build-UiDebug.ps1", "DOCUMENTAZIONE-CODICE.md",
-    "EDITOR-UI.md", "TASTIERA-BLOCCO.md", "VERIFICHE-0.2.md", "VERIFICHE-0.4.md",
-    "VERIFICHE-0.5.md", "VERIFICHE-0.6.md", "VERIFICHE-0.7.md",
-    "VERIFICHE-AUDIO-REVIEW.md", "VERIFICHE-ORDINAMENTO.md", "VERIFICHE-RIVERBERO.md",
-    "VERIFICHE-SCRUB.md",
+    "EDITOR-UI.md", "TASTIERA-BLOCCO.md",
+    "Changelogs/VERIFICHE-0.2.md", "Changelogs/VERIFICHE-0.4.md",
+    "Changelogs/VERIFICHE-0.5.md", "Changelogs/VERIFICHE-0.6.md", "Changelogs/VERIFICHE-0.7.md",
+    "Changelogs/VERIFICHE-AUDIO-REVIEW.md", "Changelogs/VERIFICHE-ORDINAMENTO.md",
+    "Changelogs/VERIFICHE-RIVERBERO.md", "Changelogs/VERIFICHE-SCRUB.md",
+    "Changelogs/VERIFICHE-PRIMO-AVVIO.md", "Changelogs/VERIFICHE-STREAMING.md",
+    "Changelogs/VERIFICHE-TASTIERA-COMPLETA.md",
 )
 SOURCE_DIRS = ("Source", "Tests", "scripts", "Assets", ".github")
 JUCE_HASH = "16ad4cfca70b73df6352e4e840ba5dc2e755d36b8ab2dd976ef3ecedcd18f6a9"

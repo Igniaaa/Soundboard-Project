@@ -3,12 +3,54 @@ import hashlib
 import importlib.util
 import json
 import pathlib
+import posixpath
+import re
 import tempfile
 import unittest
 import zipfile
 from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+class RepositoryReleaseTests(unittest.TestCase):
+    def missing_document_links(self, documents, available):
+        missing = []
+        for name, contents in documents.items():
+            for target in re.findall(r"\]\(([^)]+)\)", contents):
+                path = target.split("#", 1)[0]
+                if not path.endswith(".md") or path.startswith(("http:", "https:")):
+                    continue
+                destination = posixpath.normpath(posixpath.join(posixpath.dirname(name), path))
+                if destination not in available:
+                    missing.append(f"{name} -> {target}")
+        return missing
+
+    def test_repository_document_links_resolve(self):
+        files = list(ROOT.glob("*.md")) + list((ROOT / "Changelogs").glob("*.md"))
+        documents = {p.relative_to(ROOT).as_posix(): p.read_text(encoding="utf-8-sig")
+                     for p in files}
+        self.assertEqual(self.missing_document_links(documents, documents), [])
+
+    def test_repository_archive_contains_reports_and_linked_documents(self):
+        spec = importlib.util.spec_from_file_location("release", ROOT / "scripts/release.py")
+        release = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(release)
+        reports = {p.relative_to(ROOT).as_posix()
+                   for p in (ROOT / "Changelogs").glob("VERIFICHE-*.md")}
+        self.assertTrue(reports, "verification reports must exist in Changelogs")
+        with tempfile.TemporaryDirectory() as temporary:
+            output = pathlib.Path(temporary) / "source.zip"
+            try:
+                release.source_archive(ROOT, output)
+            except ValueError as error:
+                self.fail(f"Repository cannot be packaged: {error}")
+            with zipfile.ZipFile(output) as package:
+                names = set(package.namelist())
+                self.assertEqual(reports - names, set(), "all verification reports must ship")
+                documents = {name: package.read(name).decode("utf-8-sig")
+                             for name in names if name.endswith(".md")}
+                self.assertEqual(self.missing_document_links(documents, names), [])
 
 
 class ReleaseTests(unittest.TestCase):
@@ -23,7 +65,9 @@ class ReleaseTests(unittest.TestCase):
         self.root = pathlib.Path(self.tmp.name) / "project"
         self.root.mkdir()
         for name in self.release.ROOT_FILES:
-            (self.root / name).write_text("fixture\n", encoding="utf-8")
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("fixture\n", encoding="utf-8")
         (self.root / "VERSION").write_text("1.0.0-rc1\n")
         for name in self.release.SOURCE_DIRS:
             folder = self.root / name

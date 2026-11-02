@@ -19,7 +19,7 @@ scrittura SET_FILTER, sia per attivare sia per rilasciare, mantenendo il vincolo
 della DLL ufficiale fissata per hash. Sei suite superate, 2395 controlli bridge,
 revisione indipendente senza rilievi importanti. Conferma reale di rilascio
 tramite filtro zero riuscita. Nessuna nuova prova automatica di blocco nonzero.
-Dettagli e limiti in [TASTIERA-BLOCCO.md](TASTIERA-BLOCCO.md).
+Dettagli e limiti in [TASTIERA-BLOCCO.md](../TASTIERA-BLOCCO.md).
 
 ## Build separata del blocco tastiera — 31 ottobre 2026
 
@@ -31,7 +31,7 @@ leggibili, nessun filtro applicato. Raw Input e Windows confermano le stesse
 quattro interfacce; la tastiera prima salvata VID_17EF/PID_608C è ora assente.
 
 Il blocco fisico e il recupero richiedono la prova manuale descritta in
-[TASTIERA-BLOCCO.md](TASTIERA-BLOCCO.md). Le due copie approvate e il loro audio
+[TASTIERA-BLOCCO.md](../TASTIERA-BLOCCO.md). Le due copie approvate e il loro audio
 restano invariati; nessun commit o push eseguito.
 
 ## Mix meno attenuato — 30 ottobre 2026

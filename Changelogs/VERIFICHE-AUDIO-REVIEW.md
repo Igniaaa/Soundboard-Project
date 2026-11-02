@@ -268,4 +268,4 @@ metallica non viene dichiarata risolta senza questa verifica. Restano le
 misure sulle uscite reali e il lavoro necessario per garantire il rispetto
 dei tempi con buffer piccoli. Questa revisione non ha eseguito comandi di
 commit o push; al controllo finale lo stato esterno del repository risulta
-aggiornato al commit `2daa603`, con `origin` configurato. Vedere [GITHUB.md](GITHUB.md).
+aggiornato al commit `2daa603`, con `origin` configurato. Vedere [GITHUB.md](../GITHUB.md).
