@@ -10,6 +10,9 @@ Interception. La tastiera dedicata può sopprimere i tasti nelle altre applicazi
 tramite Interception esterno opzionale. DLL, driver e installer non sono inclusi
 nel pacchetto di anteprima; le normali funzioni soundboard non li richiedono.
 
+Per scaricare i driver, aprire le [release ufficiali di Interception](https://github.com/oblitum/Interception/releases/latest)
+e scaricare `Interception.zip` dalla sezione **Assets**.
+
 Per lo ZIP Windows vedere [Primo avvio](GETTING-STARTED.md).
 Il pacchetto comprende sorgenti corrispondenti, JUCE completo, licenze e hash.
 
