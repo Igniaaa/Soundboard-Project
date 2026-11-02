@@ -1,9 +1,8 @@
-# Build trees and generated release packages
+# Build trees and compiler output
 /build/
 /build-*/
 /cmake-build-*/
 /out/
-/dist/
 /CMakeFiles/
 /CMakeCache.txt
 /cmake_install.cmake
@@ -50,6 +49,8 @@
 *.suo
 *.sln.docstates
 *.exe
+# Keep the main portable executable available in the repository root.
+!/DualDeckJuce.exe
 *.dll
 *.sys
 *.obj
