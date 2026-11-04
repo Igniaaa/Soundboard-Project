@@ -1,5 +1,6 @@
 param(
-    [switch]$AudioDevices, [switch]$Performance, [string]$ToolRoot = $PSScriptRoot,
+    [switch]$AudioDevices, [switch]$Performance, [switch]$SkipKeyboardDevices,
+    [string]$ToolRoot = $PSScriptRoot,
     [string]$Executable = '', [string]$BuildDirectory = '', [string]$OutputDirectory = ''
 )
 $ErrorActionPreference = 'Stop'
@@ -10,14 +11,27 @@ if (-not (Test-Path -LiteralPath $taskExecutable)) { throw 'Eseguibile di test a
 New-Item -ItemType Directory -Path $taskOutput -Force | Out-Null
 & (Join-Path $ToolRoot 'tools\cmake-4.4.4-windows-x86_64\bin\ctest.exe') --test-dir $taskBuild -C Release --output-on-failure
 if ($LASTEXITCODE -ne 0) { throw 'Test DSP non superati.' }
-function Invoke-DeckCheck([string]$taskArguments) {
+function Invoke-DeckCheck([string]$taskArguments, [string]$ReportPath = '') {
     $taskProcess = Start-Process -FilePath $taskExecutable -ArgumentList $taskArguments -WindowStyle Hidden -PassThru
     if (-not $taskProcess.WaitForExit(60000)) { Stop-Process -Id $taskProcess.Id; throw 'Test scaduto dopo 60 secondi.' }
-    if ($taskProcess.ExitCode -ne 0) { throw ('Test fallito: ' + $taskArguments) }
+    if ($taskProcess.ExitCode -ne 0) {
+        if ($ReportPath -and (Test-Path -LiteralPath $ReportPath)) {
+            Write-Output ('Rapporto del test fallito: ' + $ReportPath)
+            Get-Content -LiteralPath $ReportPath
+        }
+        throw ('Test fallito (exit ' + $taskProcess.ExitCode + '): ' + $taskArguments)
+    }
 }
-Invoke-DeckCheck ('--self-test "' + $taskOutput + '"')
-Invoke-DeckCheck ('--keyboard-smoke "' + (Join-Path $taskOutput 'keyboard-devices.txt') + '"')
-Invoke-DeckCheck ('--interaction-smoke "' + (Join-Path $taskOutput 'ui-interactions.txt') + '"')
+Invoke-DeckCheck ('--self-test "' + $taskOutput + '"') (Join-Path $taskOutput 'library-tests.txt')
+$taskKeyboardReport = Join-Path $taskOutput 'keyboard-devices.txt'
+if ($SkipKeyboardDevices) {
+    $taskSkip = 'SKIP: keyboard device smoke test explicitly omitted (-SkipKeyboardDevices). Real hardware verification remains required; keyboard/filter/bridge CTest suites are still mandatory.'
+    Set-Content -LiteralPath $taskKeyboardReport -Value $taskSkip -Encoding utf8
+    Write-Output $taskSkip
+} else {
+    Invoke-DeckCheck ('--keyboard-smoke "' + $taskKeyboardReport + '"') $taskKeyboardReport
+}
+Invoke-DeckCheck ('--interaction-smoke "' + (Join-Path $taskOutput 'ui-interactions.txt') + '"') (Join-Path $taskOutput 'ui-interactions.txt')
 foreach ($taskSection in @(0,1,2,3,4)) {
     $taskName = @('board.png','audio.png','keyboard.png','dedicated-keyboard.png','editor.png')[$taskSection]
     Invoke-DeckCheck ('--smoke-test "' + (Join-Path $taskOutput $taskName) + '" ' + $taskSection)
@@ -26,7 +40,7 @@ Invoke-DeckCheck ('--smoke-test "' + (Join-Path $taskOutput 'board-small.png') +
 Invoke-DeckCheck ('--smoke-test "' + (Join-Path $taskOutput 'editor-small.png') + '" 4 960 640')
 Invoke-DeckCheck ('--smoke-test "' + (Join-Path $taskOutput 'editor-effects.png') + '" 5')
 Invoke-DeckCheck ('--smoke-test "' + (Join-Path $taskOutput 'editor-effects-small.png') + '" 5 960 640')
-if ($AudioDevices) { Invoke-DeckCheck ('--audio-smoke "' + (Join-Path $taskOutput 'audio-devices.txt') + '"') }
-if ($Performance) { Invoke-DeckCheck ('--performance-test "' + (Join-Path $taskOutput 'performance.txt') + '"') }
+if ($AudioDevices) { Invoke-DeckCheck ('--audio-smoke "' + (Join-Path $taskOutput 'audio-devices.txt') + '"') (Join-Path $taskOutput 'audio-devices.txt') }
+if ($Performance) { Invoke-DeckCheck ('--performance-test "' + (Join-Path $taskOutput 'performance.txt') + '"') (Join-Path $taskOutput 'performance.txt') }
 Get-Content -LiteralPath (Join-Path $taskOutput 'library-tests.txt')
 Write-Output ('Anteprime e report: ' + $taskOutput)

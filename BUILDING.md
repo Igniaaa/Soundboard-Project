@@ -22,6 +22,17 @@ Visual Studio 2022 e produce build-msvc/bin/DualDeckJuce.exe.
 Test esegue CTest, persistenza, streaming, interazioni sintetiche e anteprime.
 Non attiva cattura dei tasti. Il runner GitHub non installa Interception.
 
+Su GitHub il comando usa `Test.ps1 -Performance -SkipKeyboardDevices`: la prova
+Raw Input sulle periferiche del computer viene registrata come **SKIP**.
+Le suite software di tastiera e broker, il layout e le interazioni simulate
+restano obbligatori. Il collaudo delle tastiere reali resta nella checklist.
+Sul proprio PC, `Test.ps1` continua a eseguire la prova dispositivi per impostazione
+predefinita e un suo errore fa fallire il comando.
+
+Quando un test con rapporto testuale fallisce, lo script ne stampa il contenuto
+nel log. Il workflow conserva inoltre i rapporti di test nell'artefatto
+`dualdeck-test-reports`, anche in caso di fallimento.
+
 ## Strumenti portatili già disponibili
 
 La toolchain MSVC portatile predisposta localmente continua a funzionare:
