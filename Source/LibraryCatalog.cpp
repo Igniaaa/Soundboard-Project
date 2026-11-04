@@ -83,7 +83,7 @@ FolderScan scanAudioFolders(const std::vector<juce::File>& folders, const std::v
     }
     result.partial = limitReached;
     if (limitReached) result.warnings.add("Scansione parziale: limite di 100.000 audio o 1.000.000 file. Scegli cartelle piu specifiche.");
-    // Probe known paths as well, so deleted files can be removed after a complete scan.
+    // Probe known paths as well, retaining their pad settings while files are absent.
     for (const auto& file : knownFiles)
     {
         if (mustCancel()) { result.cancelled = true; return result; }
@@ -103,23 +103,8 @@ int Library::mergeFolderScan(const juce::String& profileId, const FolderScan& sc
         if (std::find(profile->folders.begin(), profile->folders.end(), folder) == profile->folders.end()) profile->folders.push_back(folder);
     std::map<juce::String, const ScannedFile*> metadata;
     for (const auto& item : scan.files) metadata.emplace(pathKey(item.file), &item);
-    if (!scan.partial)
-    {
-        const auto oldSize = profile->pads.size();
-        profile->pads.erase(std::remove_if(profile->pads.begin(), profile->pads.end(), [&](const Pad& pad)
-        {
-            const auto found = metadata.find(pathKey(pad.file));
-            if (found == metadata.end() || found->second->available) return false;
-            const auto containsPad = [&](const juce::File& folder) { return pad.file.isAChildOf(folder); };
-            const bool inCompleteFolder = std::any_of(scan.completeFolders.begin(), scan.completeFolders.end(), containsPad);
-            const bool inUnavailableFolder = std::any_of(scan.folders.begin(), scan.folders.end(), [&](const juce::File& folder)
-            {
-                return containsPad(folder) && std::find(scan.completeFolders.begin(), scan.completeFolders.end(), folder) == scan.completeFolders.end();
-            });
-            return inCompleteFolder && !inUnavailableFolder;
-        }), profile->pads.end());
-        if (removed) *removed = static_cast<int>(oldSize - profile->pads.size());
-    }
+    // A missing file can return later. Keep the original pad and persisted
+    // settings so the same path is reactivated instead of imported from scratch.
     std::set<juce::String> existing;
     for (auto& pad : profile->pads)
     {

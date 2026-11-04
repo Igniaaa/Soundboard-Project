@@ -1366,22 +1366,12 @@ void MainComponent::scanProfileFolders(const juce::String& profileId, const std:
             if (result.cancelled) safe->setStatus("Scansione annullata. Nessuna modifica applicata.");
             else if (safe->library.findProfile(profileId))
             {
-                const bool activeProfile = safe->library.current().id == profileId;
-                const auto selectedId = activeProfile && safe->selectedPad() ? safe->selectedPad()->id : juce::String();
-                int removed = 0;
-                const int added = safe->library.mergeFolderScan(profileId, result, &removed);
-                if (removed > 0 && activeProfile)
-                {
-                    safe->stopAll();
-                    const auto& pads = safe->library.current().pads;
-                    const auto selected = std::find_if(pads.begin(), pads.end(), [&](const Pad& pad) { return pad.id == selectedId; });
-                    safe->selection = selected == pads.end() ? -1 : static_cast<int>(selected - pads.begin());
-                }
+                const int added = safe->library.mergeFolderScan(profileId, result);
                 safe->refresh();
-                safe->setStatus(juce::String(added) + " nuovi suoni collegati, " + juce::String(removed) + " rimossi dai pad. "
-                    + juce::String(safe->missingFiles) + " file mancanti nel profilo attivo."
+                safe->setStatus(juce::String(added) + " nuovi suoni collegati. "
+                    + juce::String(safe->missingFiles) + " file mancanti nel profilo attivo; pad e impostazioni conservati."
                     + (result.warnings.isEmpty() ? "" : " " + result.warnings.joinIntoString(" / ")), !result.warnings.isEmpty());
-                if (added > 0 || removed > 0 || requestedFolders) safe->save();
+                if (added > 0 || requestedFolders) safe->save();
             }
             if (safe->library.current().id != profileId && !safe->library.current().folders.empty())
                 safe->scanProfileFolders(safe->library.current().id);

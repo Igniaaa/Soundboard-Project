@@ -17,7 +17,9 @@ digitalmente; SHA256SUMS.txt permette il confronto degli archivi della release.
 I comandi locali funzionano senza driver aggiuntivi. Il blocco selettivo della
 dedicata richiede Interception, installato separatamente dall'utente, e la DLL
 ufficiale x64 v1.0.1 in keyboard-runtime accanto a DualDeck.exe.
-Questa anteprima non distribuisce né installa quei componenti.
+Lo ZIP contiene già `keyboard-runtime/LEGGIMI.txt`, con i passaggi per scaricare
+e aggiungere la DLL corretta e verificarne l'hash. La cartella contiene solo
+istruzioni: questa anteprima non distribuisce né installa DLL, driver o installer.
 
 Sorgente e istruzioni del produttore: https://github.com/oblitum/Interception .
 Installare un driver è distinto dall'avvio dell'app e richiede privilegi

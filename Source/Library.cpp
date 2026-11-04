@@ -88,7 +88,8 @@ juce::Result Library::load(const juce::File& file)
             if (!padIds.insert(pad.id).second) { pad.id = juce::Uuid().toString(); padIds.insert(pad.id); }
             pad.file = juce::File::isAbsolutePath(path) ? juce::File(path) : mediaRoot.getChildFile(path);
             // Recover an old absolute path only when the exact local filename exists.
-            if (!pad.file.existsAsFile() && (schema == 3 || static_cast<bool>(entry["LocalMedia"])))
+            if (juce::File::isAbsolutePath(path) && !pad.file.existsAsFile()
+                && (schema == 3 || static_cast<bool>(entry["LocalMedia"])))
             {
                 const auto local = mediaRoot.getParentDirectory().getChildFile("sounds").getChildFile(pad.file.getFileName());
                 if (local.existsAsFile()) pad.file = local;
@@ -392,6 +393,7 @@ juce::Result runLibraryTests(const juce::File& tempRoot)
     if (r.failed() || b.current().pads[0].file != a.current().pads[0].file || b.current().pads[1].file != external)
         return juce::Result::fail("External folder reference was changed");
     auto previousSchema = juce::JSON::parse(saved); put(previousSchema, "SchemaVersion", 3);
+    previousSchema["Profiles"][0]["Pads"][0].getDynamicObject()->setProperty("File", a.current().pads[0].file.getFullPathName());
     saved.replaceWithText(juce::JSON::toString(previousSchema));
     r = b.load(saved);
     if (r.failed() || b.current().pads[0].file != recovered)

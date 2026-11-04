@@ -181,6 +181,10 @@ class ReleaseTests(unittest.TestCase):
         juce = self.root / "deps/JUCE-9.0.4.zip"
         juce.parent.mkdir()
         juce.write_bytes(b"dependency fixture")
+        runtime = self.root / "keyboard-runtime"
+        runtime.mkdir()
+        (runtime / "interception.dll").write_bytes(b"private local DLL must not ship")
+        (runtime / "keyboard.sys").write_bytes(b"private local driver must not ship")
         output = pathlib.Path(self.tmp.name) / "artifacts"
         expected = hashlib.sha256(juce.read_bytes()).hexdigest()
         self.release.stamp(self.root, binary, self.release.fingerprint(self.root), juce_hash=expected)
@@ -190,9 +194,18 @@ class ReleaseTests(unittest.TestCase):
             self.assertIn("DualDeck.exe", names)
             self.assertIn("source/DualDeck-1.0.0-rc1-source.zip", names)
             self.assertIn("source/JUCE-9.0.4.zip", names)
+            self.assertIn("keyboard-runtime/LEGGIMI.txt", names)
+            self.assertEqual([n for n in names if n.startswith("keyboard-runtime/")],
+                             ["keyboard-runtime/LEGGIMI.txt"])
+            instructions = package.read("keyboard-runtime/LEGGIMI.txt").decode("utf-8")
+            self.assertIn("Interception/library/x64/interception.dll", instructions)
+            self.assertIn("https://github.com/oblitum/Interception/releases/tag/v1.0.1", instructions)
+            self.assertIn("AB88164C11B1B48488772D4C3BFAA4509D5B0AE9DBC5A691DC4F96F0260443C8", instructions)
+            self.assertIn("driver", instructions)
             self.assertFalse(any(n.endswith((".dll", ".sys")) for n in names))
             manifest = json.loads(package.read("BUILD-INFO.json"))
             self.assertEqual(manifest["status"], "preview-not-for-stable-release")
+            self.assertFalse(manifest["interception_bundled"])
             self.assertEqual(manifest["binary_sha256"], hashlib.sha256(binary.read_bytes()).hexdigest())
         checksums = (output / "SHA256SUMS.txt").read_text()
         for archive in output.glob("*.zip"):

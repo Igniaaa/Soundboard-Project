@@ -335,6 +335,20 @@ juce::Result runLibraryFeatureTests(const juce::File& tempRoot)
     const auto index = static_cast<std::size_t>(firstIt - pads.begin());
     pads[index].name = "Custom label"; pads[index].key = "001E:0"; pads[index].keyLabel = "A";
     pads[index].settings.gain = 0.37f; pads[index].settings.overrideMasterVolume = true; pads[index].favorite = true;
+    pads[index].useGlobalMode = false;
+    auto& configured = pads[index].settings;
+    configured.mode = PlayMode::holdLoop;
+    configured.speed = 1.25; configured.trimStart = 0.12; configured.trimEnd = 0.8;
+    configured.fadeIn = 0.03; configured.fadeOut = 0.17;
+    configured.filterCutoffHz = 4321; configured.filterMix = 0.32f;
+    configured.highPassCutoffHz = 210; configured.highPassMix = 0.24f;
+    configured.delayTimeMs = 345; configured.delayFeedback = 0.41f; configured.delayMix = 0.28f;
+    configured.reverbDecay = 1.4f; configured.reverbMix = 0.43f;
+    configured.compressorEnabled = true; configured.compressorThresholdDb = -18; configured.compressorRatio = 3;
+    configured.tremoloEnabled = true; configured.tremoloSpeedHz = 2.5f; configured.tremoloDepth = 0.61f;
+    configured.distortionEnabled = true; configured.distortionDrive = 23;
+    configured.pingPongTimeMs = 310; configured.pingPongFeedback = 0.26f; configured.pingPongMix = 0.36f;
+    configured.chorusSpeedHz = 2.1f; configured.chorusDepth = 0.49f; configured.chorusMix = 0.34f;
     const auto padId = pads[index].id;
     const auto survivor = std::find_if(pads.begin(), pads.end(), [&](const Pad& pad) { return pad.file == second; });
     if (survivor == pads.end()) return juce::Result::fail("Second linked sound missing");
@@ -351,6 +365,20 @@ juce::Result runLibraryFeatureTests(const juce::File& tempRoot)
         return juce::Result::fail("New file changed stable indices");
     known.push_back(added);
     const auto temporarilyMissing = source.getChildFile("sound2.wav.fixture-backup");
+    const auto recoveryFile = project.getChildFile("recovery/library.json");
+    const auto savedPadState = [&](const Library& state) -> juce::String
+    {
+        if (state.save(recoveryFile).failed()) return {};
+        const auto json = juce::JSON::parse(recoveryFile);
+        const auto* profiles = json["Profiles"].getArray();
+        if (profiles) for (const auto& profile : *profiles)
+            if (const auto* entries = profile["Pads"].getArray())
+                for (const auto& entry : *entries)
+                    if (entry["Id"].toString() == padId) return juce::JSON::toString(entry);
+        return {};
+    };
+    const auto expectedPadState = savedPadState(library);
+    if (expectedPadState.isEmpty()) return juce::Result::fail("Save configured pad recovery fixture");
     Library synced = library;
     if (!first.moveFileTo(temporarilyMissing)) return juce::Result::fail("Missing-file fixture");
     auto deletionScan = scanAudioFolders({source, nested}, known);
@@ -358,15 +386,34 @@ juce::Result runLibraryFeatureTests(const juce::File& tempRoot)
     int removed = 0;
     if (synced.mergeFolderScan(id, partialScan, &removed) != 0 || removed != 0 || synced.totalPads() != 4)
         return juce::Result::fail("Partial scan removed a pad");
-    if (synced.mergeFolderScan(id, deletionScan, &removed) != 0 || removed != 1 || synced.totalPads() != 3
-        || std::any_of(synced.current().pads.begin(), synced.current().pads.end(), [&](const Pad& pad) { return pad.id == padId; })
+    if (synced.mergeFolderScan(id, deletionScan, &removed) != 0 || removed != 0 || synced.totalPads() != 4
+        || !synced.current().pads[index].fileMissing || savedPadState(synced) != expectedPadState
         || std::none_of(synced.current().pads.begin(), synced.current().pads.end(), [&](const Pad& pad)
         { return pad.id == survivorId && pad.key == "0030:0" && pad.settings.gain == 0.42f; }))
-        return juce::Result::fail("Deleted sound remained in linked-folder pads");
+        return juce::Result::fail("Missing sound lost its pad identity, binding or configured settings");
+    Library restarted;
+    if (restarted.load(recoveryFile).failed() || restarted.totalPads() != 4
+        || !restarted.current().pads[index].fileMissing || savedPadState(restarted) != expectedPadState)
+        return juce::Result::fail("Restart while file is missing lost pad settings");
+    synced = std::move(restarted);
+    if (synced.mergeFolderScan(id, deletionScan, &removed) != 0 || removed != 0
+        || savedPadState(synced) != expectedPadState)
+        return juce::Result::fail("Repeated missing-file scan changed pad settings");
+    const auto whileMissing = source.getChildFile("added-while-missing.wav");
+    if (!whileMissing.replaceWithText("another audio")) return juce::Result::fail("Concurrent import fixture");
+    if (synced.mergeFolderScan(id, scanAudioFolders({source, nested}, known), &removed) != 1
+        || removed != 0 || synced.totalPads() != 5 || savedPadState(synced) != expectedPadState)
+        return juce::Result::fail("Import while another file is missing replaced its settings");
     if (!temporarilyMissing.moveFileTo(first)) return juce::Result::fail("Restore fixture");
-    if (synced.mergeFolderScan(id, scanAudioFolders({source, nested}, known), &removed) != 1 || removed != 0
-        || std::none_of(synced.current().pads.begin(), synced.current().pads.end(), [&](const Pad& pad) { return pad.file == first && pad.id != padId; }))
-        return juce::Result::fail("Returning sound was not linked as a new pad");
+    if (synced.mergeFolderScan(id, scanAudioFolders({source, nested}, known), &removed) != 0 || removed != 0
+        || synced.totalPads() != 5 || synced.current().pads[index].fileMissing
+        || savedPadState(synced) != expectedPadState
+        || std::count_if(synced.current().pads.begin(), synced.current().pads.end(), [&](const Pad& pad) { return pad.file == first; }) != 1)
+        return juce::Result::fail("Returning sound did not recover its original pad and all saved settings");
+    Library restoredAfterRestart;
+    if (restoredAfterRestart.load(recoveryFile).failed() || restoredAfterRestart.current().pads[index].fileMissing
+        || savedPadState(restoredAfterRestart) != expectedPadState)
+        return juce::Result::fail("Restored pad settings changed after another restart");
     const auto offlineRoot = root.getChildFile("offline");
     Pad offlinePad; offlinePad.id = "offline-pad"; offlinePad.file = offlineRoot.getChildFile("lost.wav");
     synced.current().pads.push_back(offlinePad);
@@ -414,6 +461,32 @@ juce::Result runLibraryFeatureTests(const juce::File& tempRoot)
     if (result.failed() || collision.current().pads[index].file != first || !collision.current().pads[index].fileMissing)
         return juce::Result::fail("External file redirected to local name collision");
     temporarilyMissing.moveFileTo(first);
+    // A modern relative local path must not be redirected to another same-named
+    // file while the original is missing, including across a save/reload.
+    const auto localFile = project.getChildFile("sounds/nested/sound2.wav");
+    const auto localAway = localFile.getSiblingFile("sound2.wav.fixture-backup");
+    if (localFile.getParentDirectory().createDirectory().failed() || !localFile.replaceWithText("local nested audio"))
+        return juce::Result::fail("Local missing-file fixture");
+    Library localLibrary; localLibrary.ensureProfile();
+    Pad localPad = pads[index]; localPad.file = localFile; localPad.refreshFileInfo();
+    localLibrary.current().pads.push_back(localPad);
+    const auto localProfile = localLibrary.current().id;
+    const auto ownSounds = project.getChildFile("sounds");
+    if (localLibrary.mergeFolderScan(localProfile, scanAudioFolders({ownSounds}, {localFile})) != 1)
+        return juce::Result::fail("Local same-name collision fixture");
+    const auto expectedLocalState = savedPadState(localLibrary);
+    if (expectedLocalState.isEmpty() || !localFile.moveFileTo(localAway)
+        || localLibrary.mergeFolderScan(localProfile, scanAudioFolders({ownSounds}, {localFile, localCollision})) != 0
+        || !localLibrary.current().pads[0].fileMissing || savedPadState(localLibrary) != expectedLocalState)
+        return juce::Result::fail("Local missing pad lost settings before restart");
+    Library localRestart;
+    if (localRestart.load(recoveryFile).failed() || localRestart.current().pads[0].file != localFile
+        || !localRestart.current().pads[0].fileMissing || savedPadState(localRestart) != expectedLocalState)
+        return juce::Result::fail("Missing relative local file was redirected to a same-named file after restart");
+    if (!localAway.moveFileTo(localFile)
+        || localRestart.mergeFolderScan(localProfile, scanAudioFolders({ownSounds}, {localFile, localCollision})) != 0
+        || localRestart.current().pads[0].fileMissing || savedPadState(localRestart) != expectedLocalState)
+        return juce::Result::fail("Returning local file did not recover its configured pad");
     Profile sortProfile;
     const std::array<juce::String, 4> names {"Sound 10", "sound 2", "Alpha", "Alpha"};
     const std::array<juce::String, 4> extensions {"wav", "mp3", "ogg", "aif"};

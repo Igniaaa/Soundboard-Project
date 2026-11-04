@@ -78,5 +78,7 @@ contenuto; non sostituisce provenienza o firma.
 
 Setup-KeyboardBridge.ps1 prepara DLL e avvisi da archivi ufficiali verificati.
 Non installa il driver e non fa parte del setup standard. Leggere prima
-THIRD-PARTY-NOTICES.md e i termini upstream. L'app compila senza DLL; il pacchetto
-pubblico di anteprima non deve contenere keyboard-runtime.
+THIRD-PARTY-NOTICES.md e i termini upstream. L'app compila senza DLL. Il pacchetto
+pubblico contiene `keyboard-runtime/LEGGIMI.txt` con le istruzioni per aggiungerla.
+Il packaging genera questo file senza copiare il runtime locale: DLL, driver e
+installer Interception restano esclusi dallo ZIP.

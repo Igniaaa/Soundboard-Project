@@ -28,6 +28,41 @@ ROOT_FILES = (
 SOURCE_DIRS = ("Source", "Tests", "scripts", "Assets", ".github")
 JUCE_HASH = "16ad4cfca70b73df6352e4e840ba5dc2e755d36b8ab2dd976ef3ecedcd18f6a9"
 EXTENSIONS = {".cpp", ".h", ".py", ".ps1", ".md", ".txt", ".yml", ".yaml", ".ico", ".png"}
+KEYBOARD_RUNTIME_INSTRUCTIONS = r"""Tastiera dedicata: preparare Interception
+
+Questa cartella contiene solo istruzioni. La DLL, il driver e l'installer
+Interception non sono inclusi nel pacchetto DualDeck.
+
+1. Scaricare Interception.zip dalla release ufficiale v1.0.1:
+   https://github.com/oblitum/Interception/releases/tag/v1.0.1
+   Scegliere Interception.zip, non l'archivio dei soli sorgenti.
+
+2. Con DualDeck chiuso, estrarre dall'archivio il file:
+   Interception/library/x64/interception.dll
+   Copiarlo in questa cartella, accanto a LEGGIMI.txt.
+   La disposizione finale deve essere:
+   DualDeck.exe
+   keyboard-runtime/interception.dll
+   Usare la DLL x64 v1.0.1. Conservare gli avvisi e le licenze del produttore.
+
+3. La DLL accettata dall'app ha SHA-256:
+   AB88164C11B1B48488772D4C3BFAA4509D5B0AE9DBC5A691DC4F96F0260443C8
+   Per confrontarlo, dalla cartella di DualDeck eseguire in PowerShell:
+   Get-FileHash .\keyboard-runtime\interception.dll -Algorithm SHA256
+
+4. Il blocco della tastiera richiede anche il driver Interception installato
+   separatamente. Copiare la DLL non installa il driver. Seguire le istruzioni
+   e i requisiti del produttore; l'installazione richiede privilegi amministrativi.
+   Progetto: https://github.com/oblitum/Interception
+
+5. Riaprire DualDeck, riconoscere la dedicata con F12, rilasciare tutti i tasti
+   e attivare il blocco. Verificare in Blocco note che la dedicata comandi i pad
+   senza scrivere e che la principale continui a scrivere. Disattivare il blocco
+   e verificare che anche la dedicata torni a scrivere.
+
+Per i limiti dell'anteprima e le condizioni della dipendenza, leggere
+GETTING-STARTED.md e THIRD-PARTY-NOTICES.md nella cartella principale di DualDeck.
+"""
 
 
 def sha256(path):
@@ -205,6 +240,7 @@ def bundle(root, binary, output, *, juce_hash=JUCE_HASH):
                 package.write(root / doc, doc)
             package.write(source, "source/" + source_name)
             package.write(juce, "source/JUCE-9.0.4.zip")
+            package.writestr("keyboard-runtime/LEGGIMI.txt", KEYBOARD_RUNTIME_INSTRUCTIONS)
             package.writestr("BUILD-INFO.json", json.dumps(manifest, indent=2) + "\n")
         archives = sorted(stage.glob("*.zip"))
         (stage / "SHA256SUMS.txt").write_text(

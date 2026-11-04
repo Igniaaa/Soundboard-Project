@@ -2,6 +2,9 @@
 
 ## 1.0.0-rc1 — in preparazione
 
+- Le scansioni conservano pad e impostazioni dei file mancanti: rimettendo un
+  audio nello stesso percorso, il pad torna disponibile senza perdere tasto,
+  nome, preferiti, volume, tagli o effetti, anche dopo un riavvio dell'app.
 - Percorso open source AGPL-3.0-only e copyright Alessandro Piermatteo.
 - ZIP Windows di anteprima con sorgenti corrispondenti, JUCE completo e SHA-256.
 - Build con Visual Studio/Build Tools 2022; toolchain portatile locale ancora

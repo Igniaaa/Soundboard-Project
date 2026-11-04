@@ -37,7 +37,7 @@ elencati nella sezione 6.
   un'anteprima, senza pubblicare automaticamente una release.
 - [x] **Compilazione e test locali da una copia pulita dei sorgenti eseguiti.**
   Esiti e limiti sono nel rapporto di verifica della preparazione.
-- [ ] **Eseguire davvero l'automazione su GitHub.** Dopo commit e push, aprire
+- [x] **Eseguire davvero l'automazione su GitHub.** Dopo commit e push, aprire
   Actions e controllare il workflow **Windows build and preview**. Spuntare
   quando tutti i passaggi riescono e gli archivi di anteprima sono scaricabili;
   annotare il collegamento all'esecuzione e il commit provato.
@@ -49,30 +49,30 @@ versione Windows e modello delle tastiere. Il funzionamento ordinario del
 blocco ha una conferma storica dell'utente; le prove sotto restano da registrare
 sulla candidata. Queste prove richiedono il backend tastiera già predisposto.
 
-- [ ] **La dedicata comanda i pad senza scrivere nelle altre app.** Aprire
+- [x] **La dedicata comanda i pad senza scrivere nelle altre app.** Aprire
   Blocco note in primo piano e attivare la dedicata. I tasti associati devono
   avviare e fermare i pad corretti, senza scrivere in Blocco note; la principale
   deve continuare a scrivere normalmente. Includere un loop tenuto premuto.
-- [ ] **Disattivare il blocco restituisce la tastiera.** Spegnere
+- [x] **Disattivare il blocco restituisce la tastiera.** Spegnere
   l'interruttore della dedicata: deve tornare a scrivere in Blocco note e non
   devono restare pad attivati dal tasto ormai rilasciato.
-- [ ] **Chiudere normalmente DualDeck restituisce la tastiera.** Con il blocco
+- [x] **Chiudere normalmente DualDeck restituisce la tastiera.** Con il blocco
   attivo, chiudere l'app normalmente. La dedicata deve tornare a scrivere.
-- [ ] **Scollegare e ricollegare non blocca un'altra tastiera.** Scollegare la
+- [x] **Scollegare e ricollegare non blocca un'altra tastiera.** Scollegare la
   dedicata durante l'uso: la sessione deve disattivarsi e i suoi suoni fermarsi.
   Dopo il collegamento, controllare l'identità e riattivare manualmente; la
   principale deve rimanere utilizzabile.
-- [ ] **Recupero dopo arresto inatteso della finestra principale.** È una prova
+- [x] **Recupero dopo arresto inatteso della finestra principale.** È una prova
   tecnica controllata: interrompere il processo principale della candidata e
   verificare che la dedicata torni utilizzabile senza riavviare Windows.
 - [ ] **Recupero dopo arresto inatteso del processo ausiliario tastiera.** Il
   processo ausiliario, chiamato broker, gestisce il blocco. In una prova tecnica
   separata, interrompere solo quello e verificare il rilascio della dedicata e
   la segnalazione del problema nell'app. Identificare i processi prima della prova.
-- [ ] **Riavvio del PC.** Dopo il riavvio entrambe le tastiere devono essere
+- [x] **Riavvio del PC.** Dopo il riavvio entrambe le tastiere devono essere
   utilizzabili normalmente. Aprendo DualDeck, il blocco deve richiedere una
-  nuova attivazione manuale.
-- [ ] **Componente tastiera assente.** Su una copia o un ambiente di prova
+  nuova attivazione manuale. Anche senza riavvio*
+- [x] **Componente tastiera assente.** Su una copia o un ambiente di prova
   senza DLL/driver Interception, verificare che la soundboard resti utilizzabile
   e che l'attivazione del blocco mostri un errore comprensibile. Esiste già una
   prova sintetica senza runtime; manca la conferma nell'uso reale.
@@ -95,7 +95,7 @@ della macchina resta aperta**, come richiesto dall'utente.
   in Gestione attività, rilevare CPU e RAM di DualDeck all'inizio e alla fine.
   Se questi dati non sono stati raccolti nella sessione confermata, registrarli
   in una successiva sessione documentata.
-- [ ] **Provare le combinazioni più impegnative dentro DualDeck.** Riprodurre
+- [x] **Provare le combinazioni più impegnative dentro DualDeck.** Riprodurre
   più pad contemporaneamente, ripetere lo stesso pad in spam, usare loop,
   delay/riverbero alti, scrub avanti/indietro e freeze. Proseguire abbastanza da
   esercitare anche la lettura dei file durante la riproduzione. Spuntare dopo
@@ -124,12 +124,12 @@ collaudo sotto carico e alla raccolta delle misure disponibili.
 Fare queste prove su una **copia della libreria**. Conservare la versione 0.7
 precedente, la cartella data e gli audio necessari per poter confrontare gli esiti.
 
-- [ ] **Aggiornare dalla 0.7 alla candidata.** A programma chiuso, salvare una
+- [x] **Aggiornare dalla 0.7 alla candidata.** A programma chiuso, salvare una
   copia dei dati, preparare la candidata in una cartella nuova e trasferire la
   copia della libreria mantenendo i percorsi degli audio. Verificare profili,
   cartelle, associazioni dei tasti e impostazioni dei pad. Chiudere e riaprire:
   i dati devono risultare ancora corretti.
-- [ ] **Ripristinare il backup della libreria.** Nella copia di prova e con
+- [x] **Ripristinare il backup della libreria.** Nella copia di prova e con
   l'app chiusa, recuperare un library.json valido dal file library.json.bak.
   Riaprire e controllare i dati. Se si prova anche una libreria danneggiata,
   verificare che l'app segnali il problema e conservi il file da recuperare.
@@ -141,16 +141,16 @@ Procedura e posizione dei file: [GETTING-STARTED.md](GETTING-STARTED.md).
 
 ## 5. Altri PC e accessibilità
 
-- [ ] **Primo avvio senza strumenti di sviluppo né Interception.** Su un
+- [x] **Primo avvio senza strumenti di sviluppo né Interception.** Su un
   account Windows di prova, estrarre tutto il pacchetto in una cartella
   scrivibile e avviare DualDeck.exe. Importazione degli audio, pad e uscite
   devono funzionare senza Python o compilatore. La tastiera dedicata opzionale
   deve segnalare i componenti mancanti come descritto nella sezione 2.
-- [ ] **Collaudo su un secondo PC Windows x64.** Ripetere primo avvio,
+- [x] **Collaudo su un secondo PC Windows x64.** Ripetere primo avvio,
   caricamento della libreria e riproduzione con le uscite disponibili. Annotare
   versione Windows, dispositivi e problemi riscontrati. Il test sul solo PC di
   sviluppo non completa questa voce.
-- [ ] **Uso con la tastiera fisica.** Usare Tab, Maiusc+Tab, frecce, Invio e
+- [x] **Uso con la tastiera fisica.** Usare Tab, Maiusc+Tab, frecce, Invio e
   Maiusc+F10 dove previsti. Verificare focus riconoscibile, attivazione singola
   dei pad, rilascio dei loop e comportamento di Invio già associato a un pad.
   Sulla dedicata provare anche Bloc Num acceso/spento, Invio numerico, Stamp e Pausa.

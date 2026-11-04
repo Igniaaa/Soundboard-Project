@@ -68,6 +68,8 @@ public:
     Profile* findProfile(const juce::String& id);
     bool removeProfile(const juce::String& id);
     juce::Result renameProfile(const juce::String& id, const juce::String& name);
+    // Missing files retain their pad identity/settings; scans never remove pads.
+    // The optional removal count is kept for callers and is always zero.
     int mergeFolderScan(const juce::String& profileId, const FolderScan&, int* removed = nullptr);
     Profile& current() { return profiles[static_cast<std::size_t>(activeProfile)]; }
     const Profile& current() const { return profiles[static_cast<std::size_t>(activeProfile)]; }
