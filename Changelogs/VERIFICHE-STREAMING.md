@@ -5,6 +5,17 @@ Riscontro: risposta dei pad quasi sempre sotto 10 ms, senza artefatti
 percepibili durante la riproduzione. Questo è un riscontro d'uso, non una
 misura garantita della latenza su tutti i dispositivi.
 
+## Riscontro sulla stabilità — 4 novembre 2026
+
+L'utente riferisce che il punto sulla stabilità audio con buffer piccoli sembra
+non generare problemi nell'uso attuale. Richiede di lasciare non spuntata la
+verifica delle prestazioni: resta da eseguire il collaudo in condizioni di
+stress della macchina. Con un successivo riscontro conferma anche una sessione
+di 60 minuti senza problemi audio: la relativa verifica d'ascolto è completata.
+Configurazione Discord/microfono/cuffie, CPU, RAM, buffer, campionamento e tempi
+dei callback non sono dettagliati nel riscontro. La verifica delle prestazioni
+sotto stress resta aperta in [RELEASE-CHECKLIST.md](../RELEASE-CHECKLIST.md).
+
 ## Versione approvata
 
 `DualDeckJuce-0.7.exe` e `DualDeckJuce.exe` sono copie identiche della prova,

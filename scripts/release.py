@@ -16,7 +16,7 @@ ROOT_FILES = (
     "CONTRIBUTING.md", "THIRD-PARTY-NOTICES.md", "RELEASE-CHECKLIST.md",
     "CHANGELOG.md", "RELEASE-PLAN.md", "VERIFICA-RELEASE.md", "JUCE-LICENSE.md", "LEGGIMI.md", "GITHUB.md",
     ".gitignore", ".gitattributes", "Setup-KeyboardBridge.ps1",
-    "Inspect-KeyboardDriver.ps1", "Build-UiDebug.ps1", "DOCUMENTAZIONE-CODICE.md",
+    "Inspect-KeyboardDriver.ps1", "DOCUMENTAZIONE-CODICE.md",
     "EDITOR-UI.md", "TASTIERA-BLOCCO.md",
     "Changelogs/VERIFICHE-0.2.md", "Changelogs/VERIFICHE-0.4.md",
     "Changelogs/VERIFICHE-0.5.md", "Changelogs/VERIFICHE-0.6.md", "Changelogs/VERIFICHE-0.7.md",
