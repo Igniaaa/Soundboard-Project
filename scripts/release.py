@@ -14,7 +14,7 @@ ROOT_FILES = (
     "CMakeLists.txt", "Build.ps1", "Setup.ps1", "Test.ps1", "VERSION", "LICENSE",
     "COPYRIGHT.md", "README.md", "GETTING-STARTED.md", "BUILDING.md",
     "CONTRIBUTING.md", "THIRD-PARTY-NOTICES.md", "RELEASE-CHECKLIST.md",
-    "CHANGELOG.md", "RELEASE-PLAN.md", "VERIFICA-RELEASE.md", "JUCE-LICENSE.md", "LEGGIMI.md", "GITHUB.md",
+    "CHANGELOG.md", "VERIFICA-RELEASE.md", "JUCE-LICENSE.md", "LEGGIMI.md", "GITHUB.md",
     ".gitignore", ".gitattributes", "Setup-KeyboardBridge.ps1",
     "Inspect-KeyboardDriver.ps1", "DOCUMENTAZIONE-CODICE.md",
     "EDITOR-UI.md", "TASTIERA-BLOCCO.md",

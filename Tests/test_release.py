@@ -5,6 +5,8 @@ import json
 import pathlib
 import posixpath
 import re
+import shutil
+import subprocess
 import tempfile
 import unittest
 import zipfile
@@ -14,6 +16,19 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class RepositoryReleaseTests(unittest.TestCase):
+    @unittest.skipUnless((ROOT / ".git").exists() and shutil.which("git"),
+                         "source archive has no Git checkout metadata")
+    def test_required_release_files_are_tracked_in_checkout(self):
+        spec = importlib.util.spec_from_file_location("release", ROOT / "scripts/release.py")
+        release = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(release)
+        result = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z"],
+                                check=True, capture_output=True)
+        tracked = set(result.stdout.decode("utf-8").split("\0"))
+        missing = sorted(set(release.ROOT_FILES) - tracked)
+        self.assertEqual(missing, [],
+                         "Required release files absent from Git checkout: " + ", ".join(missing))
+
     def missing_document_links(self, documents, available):
         missing = []
         for name, contents in documents.items():
