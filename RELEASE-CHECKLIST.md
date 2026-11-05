@@ -133,7 +133,7 @@ precedente, la cartella data e gli audio necessari per poter confrontare gli esi
   l'app chiusa, recuperare un library.json valido dal file library.json.bak.
   Riaprire e controllare i dati. Se si prova anche una libreria danneggiata,
   verificare che l'app segnali il problema e conservi il file da recuperare.
-- [ ] **Gestire cartelle o audio mancanti.** Usare la copia di prova con un
+- [x] **Gestire cartelle o audio mancanti.** Usare la copia di prova con un
   percorso non più disponibile. Controllare la segnalazione e ricollegare il
   file o la cartella; i pad devono conservare impostazioni e associazioni.
 
