@@ -1,5 +1,109 @@
 # Verifiche scrub e velocità zero
 
+## Variante A approvata nell'app — 7 novembre 2026
+
+Dopo la consegna di `DualDeckJuce-spectral-A-test.exe`, l'utente conferma:
+«Ok dovrebbe andare bene adesso». La variante A, con il bilanciamento
+più spettrale descritto sotto, diventa il riferimento per scrub e freeze.
+
+Aggiornati `DualDeckJuce.exe` e `DualDeckJuce-1.0.0-rc1.exe` dalla copia
+provata e verificata, con lo stesso SHA-256:
+`4041B8177667356699121A79EFDEC1D179D928924770FB37C2BBAAEA9B2DC15A`.
+La build aveva superato tutte le sette suite CTest, i 72 controlli della
+nuova regressione e le verifiche dell'app. Il confronto col motore integrato
+aveva confermato l'identità di 480.000 campioni con l'anteprima A scelta.
+
+Le due prove di questa chat, `DualDeckJuce-scrub-freeze-test.exe` (rifiutata)
+e `DualDeckJuce-spectral-A-test.exe` (approvata), sono archiviate con verifica
+degli hash in `old-builds/approvazione-spettrale-2026-11-07/`. L'archivio
+conserva anche il precedente eseguibile standard, i metadati della build
+approvata e lo snapshot esatto dei sorgenti prima di questa registrazione.
+
+## Bilanciamento più spettrale — 6 novembre 2026
+
+L'utente riferisce che la prova con grani maggiormente casuali peggiora
+il risultato e chiede più suono spettrale o «armonia». Fra due anteprime
+sul medesimo `UNA PALMAAAAAAAA.mp3`, sceglie **A — più spettrale**.
+L'anteprima B, quasi interamente spettrale, non è quella selezionata.
+
+Ripristinato `PhantomScrub.h` al riferimento precedente: variazione locale
+e allineamento dei grani tornano quelli originali. In `SpectralScrub.h`
+il controllo del contributo PCM passa da `0.09 + 0.83 * sqrt(texture)` a
+`0.06 + 0.48 * sqrt(texture)`; il limite in presenza di componenti tonali
+passa da 0,35 a 0,28. Il raccordo a coseno traduce questi controlli in
+pesi effettivi: nel freeze a 5,5 s il contributo spettrale passa dal 39,6%
+al 74,7%, a 3 s dal 45,3% al 77,5%. Gli attacchi rilevati conservano il
+percorso PCM originale. Finestre, diffusione spettrale, allineamento
+delle fasi e intorno del cursore mantengono il comportamento precedente.
+
+La verifica della nuova direzione considera la tenuta delle armoniche,
+oltre a livelli e stereo. Il precedente criterio aggiunto che premiava
+la sola piattezza del rumore non rappresenta il risultato richiesto ed
+è ritirato insieme alla modifica rifiutata. Restano le regressioni
+preesistenti su rumore, note, accordi, attacchi, silenzio e bordi.
+`scrub_texture` contiene ora 72 controlli: voce sintetica a 233 Hz con
+armoniche 466/699 Hz e rumore, più confronto del frammento corto con le
+copie a 60/178 s, a 44,1/48/96/192 kHz. Il codice originale fallisce
+quattro nuovi controlli di ampiezza coerente della fondamentale e della
+seconda armonica. Non si introducono armoniche assenti nella sorgente.
+
+Anteprime con identico guadagno, probe e rapporti locali:
+`test-output/scrub-spectral-2026-11-06/`. Il tentativo rifiutato è
+conservato in `backups/scrub-spectral-2026-11-06/rejected/` e nel suo
+eseguibile di prova. La successiva conferma dell'utente dopo la consegna
+della build dedicata è registrata nella sezione del 7 novembre.
+
+## Cicli metallici nel freeze — 6 novembre 2026 — prova rifiutata
+
+**Tentativo ritirato:** dopo la prova l'utente riferisce che il suono è
+peggiore. La riduzione dei picchi misurata sotto non corrisponde al
+risultato percettivo desiderato. Il ripristino e la direzione successiva
+sono descritti nella sezione precedente.
+
+Il nuovo riscontro riguarda scrub e freeze su `UNA PALMAAAAAAAA.mp3`
+(circa 9,12 s). Il confronto sul medesimo frammento sintetico, spostato
+a 60 e 178 s in un file di 180 s, non evidenzia una perdita di precisione
+legata alla posizione. Sul campione reale, invece, la lettura PCM locale
+può stabilizzarsi su un ciclo breve: la variazione era ridotta dalla stima
+di trama e poi annullata dalla ricerca di somiglianza dell'onda.
+
+Per il materiale classificato come testurizzato, `PhantomScrub::hold`
+sceglie ora i grani in tutto l'intorno già disponibile, senza cercare un
+altro ciclo simile. Il confronto di correlazione resta per compensare il
+livello dei raccordi. I suoni classificati come tonali mantengono il
+precedente allineamento. Il mix PCM/spettrale conserva il peso adattivo
+della trama; finestra, intorno sorgente, attacchi e lettore in movimento
+non cambiano. Nessuna nuova allocazione nel callback.
+
+Nel freeze del file reale a 5,5 s, la quota di energia nel bin più forte
+passa dal 38,10% al 9,78%; a 3 s passa dal 25,18% al 5,08%, a 3,5 s dal
+24,19% al 2,88%. Misura: canale sinistro, FFT Hann su un secondo, dopo un
+secondo di assestamento, uscita 48 kHz. Nel trascinamento molto lento
+intorno a 5,5 s (escursione sinusoidale ±1 ms, un ciclo/s, mouse 60 Hz),
+la piattezza spettrale nella banda 650–1150 Hz passa da 0,213 a 0,391.
+Queste misure rilevano la riduzione delle righe persistenti e non
+dimostrano da sole naturalezza all'ascolto o un miglioramento in ogni
+condizione di trascinamento. Non è stato effettuato ascolto fisico.
+
+`Tests/ScrubTextureTests.cpp` aggiunge la suite `scrub_texture`: 100
+controlli su grani rumorosi, spettro del mix, arresto dopo trascinamento
+avanti/indietro, livello, stereo in opposizione di fase e confronto del
+frammento corto con la sua copia a 60/178 s. Uscite 44,1/48/96/192 kHz.
+La suite finale, compilata contro gli header originali conservati,
+fallisce 15 controlli di trama: rileva il difetto sia nel phantom isolato
+sia nell'uscita mista. Le suite esistenti coprono anche note, accordi,
+attacchi, silenzio vicino al cursore, bordi e intorno del freeze.
+
+Probe, misure e log locali: `test-output/scrub-long-2026-11-06/`.
+Header precedenti: `backups/scrub-long-2026-11-06/`. Il file audio originale
+e i dati della libreria non sono modificati. La build di prova dedicata
+richiede ancora il riscontro d'ascolto dell'utente prima di promuoverla
+ai nomi degli eseguibili approvati.
+
+Compilazione Release completata; tutte le sette suite CTest superate,
+inclusi i 100 nuovi controlli e le regressioni preesistenti su intonazione,
+accordi, attacchi e bordi. Revisione del codice senza rilievi residui.
+
 ## Versione approvata all'ascolto — 30 ottobre 2026
 
 Dopo aver provato `DualDeckJuce-0.7-freeze-range.exe`, l'utente conferma:

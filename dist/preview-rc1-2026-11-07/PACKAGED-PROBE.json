@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-07",
+  "version": "1.0.0-rc1",
+  "binary_sha256": "4041b8177667356699121a79efdec1d179d928924770fb37c2bbaaea9b2dc15a",
+  "ctest_suites_passed": 7,
+  "ctest_suites_failed": 0,
+  "python_tests_run": 15,
+  "python_tests_skipped": 1,
+  "python_tests_failed": 0,
+  "packaged_first_start": "PASS",
+  "clean_install_and_parent_library_isolation": "PASS",
+  "crc_and_sha256": "PASS",
+  "corresponding_source": "PASS",
+  "personal_audio_and_library_excluded": true,
+  "interception_bundled": false
+}

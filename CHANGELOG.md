@@ -5,6 +5,8 @@
 - Le scansioni conservano pad e impostazioni dei file mancanti: rimettendo un
   audio nello stesso percorso, il pad torna disponibile senza perdere tasto,
   nome, preferiti, volume, tagli o effetti, anche dopo un riavvio dell'app.
+- Scrub e freeze con il bilanciamento più spettrale della variante A.
+  Bilanciamento e recupero pad confermati dall'utente il 7 novembre 2026.
 - Percorso open source AGPL-3.0-only e copyright Alessandro Piermatteo.
 - ZIP Windows di anteprima con sorgenti corrispondenti, JUCE completo e SHA-256.
 - Build con Visual Studio/Build Tools 2022; toolchain portatile locale ancora
@@ -12,7 +14,6 @@
 - Versione unica, metadati Windows, workflow e guida iniziale.
 - Base corrente del repository, incluso streaming audio, profili, pad,
   effetti, editor, microfono e integrazione tastiera opzionale.
-- Eseguibili 0.7 approvati invariati fino alla nuova prova utente.
 - Corretto il benchmark su installazione pulita: l'assenza di una libreria
   personale non fa fallire le prove sintetiche.
 - Il pacchetto portatile mantiene i dati nella propria cartella anche se

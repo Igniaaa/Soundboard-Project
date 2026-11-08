@@ -1,6 +1,6 @@
 # Checklist per il rilascio di DualDeck 1.0
 
-Stato aggiornato al **4 novembre 2026**: preparazione di **1.0.0-rc1**,
+Stato aggiornato al **7 novembre 2026**: preparazione di **1.0.0-rc1**,
 cioè una versione candidata da collaudare prima della 1.0 stabile.
 
 ## Come usare questa checklist
@@ -136,6 +136,8 @@ precedente, la cartella data e gli audio necessari per poter confrontare gli esi
 - [x] **Gestire cartelle o audio mancanti.** Usare la copia di prova con un
   percorso non più disponibile. Controllare la segnalazione e ricollegare il
   file o la cartella; i pad devono conservare impostazioni e associazioni.
+  Conferma dell'utente sul recupero pad del 7 novembre 2026:
+  [rapporto](Changelogs/VERIFICHE-PAD-RECOVERY.md).
 
 Procedura e posizione dei file: [GETTING-STARTED.md](GETTING-STARTED.md).
 

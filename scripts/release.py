@@ -103,6 +103,14 @@ def source_files(root):
         if not path.is_file():
             raise ValueError(f"Required release source missing: {name}")
         result.append(path)
+    # Include new verification reports alongside the existing required ones.
+    for path in (root / "Changelogs").glob("VERIFICHE-*.md"):
+        if path in result:
+            continue
+        check_local(path, root)
+        if not path.is_file():
+            raise ValueError(f"Invalid verification report: {path.name}")
+        result.append(path)
     for name in SOURCE_DIRS:
         folder = root / name
         check_local(folder, root)

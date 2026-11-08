@@ -1,0 +1,2 @@
+af8e5f186e73fc3e735323fa38e51471ac0d71b1175452271c4bc1f35293ded4  DualDeck-1.0.0-rc1-source.zip
+edbd2fbf26ed42203460854276ed5c3a9dc052c0b88f557a6d38e81e198ba48f  DualDeck-1.0.0-rc1-windows-x64-preview.zip

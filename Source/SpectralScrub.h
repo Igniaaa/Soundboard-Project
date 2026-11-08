@@ -363,13 +363,14 @@ private:
         }
         heldTexture = totalPower > 1.0e-12
             ? static_cast<float>(std::clamp(1.8 * texturedPower / totalPower - 0.03, 0.0, 1.0)) : 0.0f;
-        // A small PCM contribution remains even on tonal material; broadband
-        // material uses mostly PCM so frozen random peaks do not become tones.
-        heldDryMix = 0.09f + 0.83f * std::sqrt(heldTexture);
+        // Keep the phase-continuous spectral voice prominent. PCM still adds
+        // local texture, but must not disperse sustained notes and overtones.
+        // Noise bands retain the existing spectral phase diffusion below.
+        heldDryMix = 0.06f + 0.48f * std::sqrt(heldTexture);
         // Do not sacrifice voiced partials when noise and a note coexist.
         // Noise-like spectral regions also diffuse in phase below, so they
         // need not be completely replaced with wandering PCM grains.
-        if (tonalPower > totalPower * 0.1) heldDryMix = std::min(heldDryMix, 0.35f);
+        if (tonalPower > totalPower * 0.1) heldDryMix = std::min(heldDryMix, 0.28f);
         // The strongest channel supplies each oscillator's frequency. The same
         // oscillator drives L/R, with their original relative phases preserved.
         const float phaseOffset = static_cast<float>((phantom.position() - centre) / dryStep

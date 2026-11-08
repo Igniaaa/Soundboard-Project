@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0-rc1",
+  "machine": "AMD64",
+  "binary_sha256": "4041b8177667356699121a79efdec1d179d928924770fb37c2bbaaea9b2dc15a",
+  "source_tree_sha256": "59a93f105b4888a34d49d68e5a2f274d4a955fc11fb7858241e8d6bea59e5b11",
+  "source_files": 91,
+  "crc": "PASS",
+  "checksums": {
+    "DualDeck-1.0.0-rc1-source.zip": "af8e5f186e73fc3e735323fa38e51471ac0d71b1175452271c4bc1f35293ded4",
+    "DualDeck-1.0.0-rc1-windows-x64-preview.zip": "edbd2fbf26ed42203460854276ed5c3a9dc052c0b88f557a6d38e81e198ba48f"
+  },
+  "documentation_links": "PASS",
+  "private_data_excluded": true,
+  "interception_bundled": false
+}
