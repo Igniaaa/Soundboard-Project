@@ -16,6 +16,13 @@ gli avvisi, compreso JUCE.spdx.json, inventario delle licenze delle dipendenze
 incorporate. Conservare questi avvisi. SHA-256 dell'archivio:
 16AD4CFCA70B73DF6352E4E840BA5DC2E755D36B8AB2DD976EF3ECEDCD18F6A9.
 
+## Foleys GUI Magic: prova UI opzionale
+
+La prova opzionale della UI usa **Foleys GUI Magic**, copyright
+(c) 2019-2023 Foleys Finest Audio - Daniel Walz, con licenza BSD 3-Clause.
+Il modulo non è incluso nella build standard. Provenienza e riproduzione sono
+in FOLEYS-UI.md; il testo completo è in Assets/Foleys-LICENSE.txt.
+
 ## Interception v1.0.1: componente esterno opzionale
 
 Autore: Francisco Lopes da Silva (oblitum).
@@ -26,13 +33,24 @@ binari attraverso la libreria/API. L'accesso ai sorgenti completi di driver
 e installer è descritto come parte di una licenza commerciale separata.
 I driver non sono presentati come parte open source di DualDeck.
 
-L'anteprima esclude DLL, driver e installer Interception. Il bridge opzionale
+Scelta di distribuzione confermata l'8 novembre 2026: il pacchetto DualDeck
+esclude DLL, driver, installer e archivi Interception. Include soltanto le
+istruzioni per procurarsi i componenti dal produttore, installare separatamente
+il driver e collegare la DLL. La procedura è in
+[GETTING-STARTED.md](GETTING-STARTED.md) e in `keyboard-runtime/LEGGIMI.txt`
+nel pacchetto Windows. Il setup standard non prepara questi componenti;
+`Setup-KeyboardBridge.ps1` resta uno strumento opzionale di sviluppo locale.
+
+Il bridge opzionale
 verifica la DLL ufficiale x64 per SHA-256 e usa anche il layout interno del
 contesto e DeviceIoControl SET_FILTER per ottenere conferma della scrittura
-su un driver senza GET_FILTER. Tenere la dipendenza esterna **non risolve da
-solo** l'ammissibilità di questa integrazione: prima della release stabile
-vanno chiariti i termini o adeguata l'implementazione. Nessun diritto
-commerciale sui driver è promesso. La soundboard locale funziona senza di essi.
+su un driver senza GET_FILTER. La condizione sull'uso esclusivo dell'API nel
+README upstream è espressa nel passaggio sulla redistribuzione di driver e
+installer, esclusi da questo pacchetto. La sua applicabilità all'integrazione
+esterna e gli obblighi pertinenti della libreria restano oggetto di verifica:
+questa nota non registra una violazione accertata né una verifica completa di
+conformità. Nessun diritto commerciale sui driver è promesso. La soundboard
+locale funziona senza di essi.
 
 ## Strumenti di sviluppo
 

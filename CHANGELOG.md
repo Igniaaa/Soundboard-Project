@@ -2,6 +2,13 @@
 
 ## 1.0.0-rc1 — in preparazione
 
+- Barra dei menu classica e, nella build Foleys, personalizzazione visuale di
+  tema, soundboard, tastiere ed editor degli effetti, con salvataggio separato.
+- Schermata principale convertita in elementi Foleys reali: contenitori XML,
+  pulsanti, campi, cursori, selettori, pad e griglia adattiva modificabili direttamente.
+- Confermata la distribuzione senza componenti Interception; completate le
+  istruzioni per installazione separata, collegamento della DLL x64, prova,
+  risoluzione dei problemi e disinstallazione.
 - Le scansioni conservano pad e impostazioni dei file mancanti: rimettendo un
   audio nello stesso percorso, il pad torna disponibile senza perdere tasto,
   nome, preferiti, volume, tagli o effetti, anche dopo un riavvio dell'app.

@@ -1,4 +1,8 @@
 #include "PadEditor.h"
+#include "UiTheme.h"
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+#include "ProgramAppearance.h"
+#endif
 #include <algorithm>
 #include <cmath>
 
@@ -63,12 +67,12 @@ float WaveformDisplay::xAt(double seconds) const
 void WaveformDisplay::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat().reduced(2.0f);
-    g.setColour(juce::Colour(0xff101c2a)); g.fillRoundedRectangle(bounds, 8.0f);
-    g.setColour(juce::Colour(0xff34465b));
+    g.setColour(uiColour(*this, uiColours::background)); g.fillRoundedRectangle(bounds, uiRadius(*this, 8.0f));
+    g.setColour(uiColour(*this, uiColours::line));
     g.drawHorizontalLine(juce::roundToInt(bounds.getCentreY()), bounds.getX(), bounds.getRight());
     if (peaks.empty())
     {
-        g.setColour(juce::Colour(0xffa9b9ca));
+        g.setColour(uiColour(*this, uiColours::muted));
         g.drawFittedText("Caricamento della forma d'onda...", getLocalBounds(), juce::Justification::centred, 1);
         return;
     }
@@ -87,10 +91,10 @@ void WaveformDisplay::paint(juce::Graphics& g)
         for (auto bin = first; bin < last; ++bin) peak = std::max(peak, peaks[bin]);
         const auto x = bounds.getX() + static_cast<float>(column);
         const auto amplitude = std::clamp(peak, 0.0f, 1.0f) * (bounds.getHeight() * 0.44f);
-        g.setColour(x < startX || x > endX ? juce::Colour(0xff526474) : juce::Colour(0xff63dfc4));
+        g.setColour(x < startX || x > endX ? uiColour(*this, uiColours::muted) : uiColour(*this, uiColours::accent));
         g.drawVerticalLine(juce::roundToInt(x), middle - amplitude, middle + amplitude);
     }
-    g.setColour(juce::Colour(0xffffc579));
+    g.setColour(uiColour(*this, uiColours::warning));
     if (startX >= bounds.getX() && startX <= bounds.getRight())
         g.drawLine(startX, bounds.getY(), startX, bounds.getBottom(), 2.0f);
     if (endX >= bounds.getX() && endX <= bounds.getRight())
@@ -100,7 +104,7 @@ void WaveformDisplay::paint(juce::Graphics& g)
         const auto x = xAt(scrubPosition);
         if (x >= bounds.getX() && x <= bounds.getRight())
         {
-            g.setColour(juce::Colour(0xffe7f1ff));
+            g.setColour(uiColour(*this, uiColours::text));
             g.drawLine(x, bounds.getY() + 6.0f, x, bounds.getBottom(), 2.0f);
             juce::Path head;
             head.addTriangle(x - 6.0f, bounds.getY(), x + 6.0f, bounds.getY(), x, bounds.getY() + 8.0f);
@@ -110,8 +114,8 @@ void WaveformDisplay::paint(juce::Graphics& g)
     if (zoom > 1.0)
     {
         const auto overview = bounds.removeFromBottom(4.0f);
-        g.setColour(juce::Colour(0xff34465b)); g.fillRect(overview);
-        g.setColour(juce::Colour(0xff63dfc4));
+        g.setColour(uiColour(*this, uiColours::line)); g.fillRect(overview);
+        g.setColour(uiColour(*this, uiColours::accent));
         g.fillRect(overview.getX() + overview.getWidth() * static_cast<float>(viewStart / duration),
                    overview.getY(), overview.getWidth() / static_cast<float>(zoom), overview.getHeight());
     }
@@ -175,15 +179,17 @@ void WaveformDisplay::mouseWheelMove(const juce::MouseEvent& event, const juce::
 PadEditorPanel::PadEditorPanel()
 {
     setWantsKeyboardFocus(true);
-    for (auto* component : std::initializer_list<juce::Component*>{&waveform, &heading, &help, &message,
+    for (auto* component : std::initializer_list<juce::Component*>{&waveform, &heading, &message,
                             &positionLabel, &zoomLabel, &zoomOutButton, &zoomInButton, &zoomResetButton,
-                            &audioHeading, &filterHeading, &filterHint, &highPassHeading, &highPassHint, &delayHeading, &delayHint,
+                            &audioHeading, &filterHeading, &highPassHeading, &delayHeading,
                             &startLabel, &endLabel, &cutoffLabel, &filterMixLabel, &highPassCutoffLabel, &highPassMixLabel,
                             &delayTimeLabel, &delayFeedbackLabel, &delayMixLabel,
                             &start, &end, &cutoff, &filterMix, &highPassCutoff, &highPassMix, &delayTime, &delayFeedback, &delayMix,
                             &previewLoop, &padLoop, &playButton, &stopPreviewButton, &saveButton, &closeButton}) addAndMakeVisible(component);
-    heading.setFont(juce::FontOptions(23.0f));
-    help.setText("Tieni premuta o trascina l'onda per ascoltare. L'anteprima usa gli effetti correnti.", juce::dontSendNotification);
+    heading.setFont(juce::FontOptions(23.0f).withStyle("Bold"));
+    heading.setColour(juce::Label::textColourId, juce::Colour(0xffedf3f9));
+    saveButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff63dfc4));
+    saveButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xff0b111b));
     positionLabel.setText("0.00 s", juce::dontSendNotification);
     positionLabel.setJustificationType(juce::Justification::centredRight);
     zoomLabel.setText("1×", juce::dontSendNotification);
@@ -201,15 +207,17 @@ PadEditorPanel::PadEditorPanel()
     {
         zoomLabel.setText(juce::String(waveform.getZoom(), 1) + "×", juce::dontSendNotification);
     };
-    audioHeading.setText("AUDIO E LOOP A-B", juce::dontSendNotification);
-    filterHeading.setText("FILTRO PASSA BASSO", juce::dontSendNotification);
-    filterHint.setText("Taglia gli acuti. Mix 0% = spento.", juce::dontSendNotification);
-    highPassHeading.setText("FILTRO PASSA ALTO", juce::dontSendNotification);
-    highPassHint.setText("Taglia i bassi. Mix 0% = spento.", juce::dontSendNotification);
-    delayHeading.setText("DELAY", juce::dontSendNotification);
-    delayHint.setText("Eco attenuate; il suono originale mantiene il suo volume.", juce::dontSendNotification);
+    audioHeading.setText("Audio e loop A-B", juce::dontSendNotification);
+    audioHeading.setTooltip("Tieni premuta o trascina l'onda per ascoltare. Rotella: zoom. Maiusc+rotella: sposta. Trascina i marcatori per regolare A e B.");
+    filterHeading.setText("Passa basso", juce::dontSendNotification);
+    filterHeading.setTooltip("Taglia gli acuti. Mix 0% disattiva il filtro.");
+    highPassHeading.setText("Passa alto", juce::dontSendNotification);
+    highPassHeading.setTooltip("Taglia i bassi. Mix 0% disattiva il filtro.");
+    delayHeading.setText("Delay", juce::dontSendNotification);
+    delayHeading.setTooltip("Aggiunge ripetizioni senza modificare il volume originale.");
     startLabel.setText("A - inizio (s)", juce::dontSendNotification);
-    endLabel.setText("B - fine (s), 0 = fine file", juce::dontSendNotification);
+    endLabel.setText("B - fine (s)", juce::dontSendNotification);
+    end.setTooltip("0 usa la fine del file.");
     previewLoop.setTooltip("Ascolta ripetutamente il tratto tra A e B senza salvare.");
     previewLoop.setEnabled(false);
     playButton.setEnabled(false);
@@ -225,9 +233,9 @@ PadEditorPanel::PadEditorPanel()
     for (auto* label : {&audioHeading, &filterHeading, &highPassHeading, &delayHeading})
     {
         label->setFont(juce::FontOptions(14.0f).withStyle("Bold"));
-        label->setColour(juce::Label::textColourId, juce::Colour(0xff63dfc4));
+        label->setColour(juce::Label::textColourId, juce::Colour(0xffedf3f9));
     }
-    for (auto* label : {&help, &message, &positionLabel, &zoomLabel, &filterHint, &highPassHint, &delayHint})
+    for (auto* label : {&message, &positionLabel, &zoomLabel})
         label->setColour(juce::Label::textColourId, juce::Colour(0xffa9b9ca));
     for (auto* slider : {&start, &end, &cutoff, &filterMix, &highPassCutoff, &highPassMix, &delayTime, &delayFeedback, &delayMix})
     {
@@ -459,7 +467,7 @@ void PadEditorPanel::setWaveform(std::vector<float> peaks, double duration)
     start.setRange(0, duration, 0.01); end.setRange(0, duration, 0.01);
     waveform.setPeaks(std::move(peaks), duration);
     waveform.setTrim(start.getValue(), end.getValue());
-    message.setText(juce::String(duration, 2) + " s  /  Rotella: zoom; Maiusc+rotella: sposta; giallo: A-B.", juce::dontSendNotification);
+    message.setText("Durata: " + juce::String(duration, 2) + " s", juce::dontSendNotification);
     updating = false;
 }
 void PadEditorPanel::setPlaybackPosition(double seconds)
@@ -470,23 +478,22 @@ void PadEditorPanel::setPlaybackPosition(double seconds)
 void PadEditorPanel::setMessage(const juce::String& value) { message.setText(value, juce::dontSendNotification); }
 void PadEditorPanel::paint(juce::Graphics& g)
 {
-    g.setColour(juce::Colour(0xff121c29)); g.fillRoundedRectangle(getLocalBounds().toFloat(), 12.0f);
+    g.setColour(uiColour(*this, uiColours::panel)); g.fillRoundedRectangle(getLocalBounds().toFloat(), uiRadius(*this, 12.0f));
     for (const auto& card : {audioCard, filterCard, delayCard})
     {
-        g.setColour(juce::Colour(0xff182536)); g.fillRoundedRectangle(card.toFloat(), 10.0f);
-        g.setColour(juce::Colour(0xff34465b)); g.drawRoundedRectangle(card.toFloat().reduced(0.5f), 10.0f, 1.0f);
+        g.setColour(uiColour(*this, uiColours::tile)); g.fillRoundedRectangle(card.toFloat(), uiRadius(*this, 10.0f));
+        g.setColour(uiColour(*this, uiColours::line)); g.drawRoundedRectangle(card.toFloat().reduced(0.5f), uiRadius(*this, 10.0f), 1.0f);
     }
     for (const auto& effect : extraEffects)
     {
-        g.setColour(juce::Colour(0xff182536)); g.fillRoundedRectangle(effect.card.toFloat(), 10.0f);
-        g.setColour(juce::Colour(0xff34465b)); g.drawRoundedRectangle(effect.card.toFloat().reduced(0.5f), 10.0f, 1.0f);
+        g.setColour(uiColour(*this, uiColours::tile)); g.fillRoundedRectangle(effect.card.toFloat(), uiRadius(*this, 10.0f));
+        g.setColour(uiColour(*this, uiColours::line)); g.drawRoundedRectangle(effect.card.toFloat().reduced(0.5f), uiRadius(*this, 10.0f), 1.0f);
     }
 }
 void PadEditorPanel::resized()
 {
     auto area = getLocalBounds().reduced(24);
     heading.setBounds(area.removeFromTop(36));
-    help.setBounds(area.removeFromTop(30));
     area.removeFromTop(8);
     audioCard = area.removeFromTop(350);
     int right = audioCard.getRight() - 16;
@@ -510,16 +517,15 @@ void PadEditorPanel::resized()
     playButton.setBounds(audioCard.getX() + 16, audioCard.getY() + 302, 150, 32);
     stopPreviewButton.setBounds(audioCard.getX() + 176, audioCard.getY() + 302, 100, 32);
     area.removeFromTop(14);
-    auto effects = area.removeFromTop(246);
+    auto effects = area.removeFromTop(216);
     filterCard = effects.removeFromLeft((effects.getWidth() - 14) / 2);
     effects.removeFromLeft(14);
     delayCard = effects;
-    auto layoutEffect = [](const juce::Rectangle<int>& card, juce::Label& title, juce::Label& hint,
+    auto layoutEffect = [](const juce::Rectangle<int>& card, juce::Label& title,
                            std::initializer_list<std::pair<juce::Label*, juce::Slider*>> controls)
     {
         title.setBounds(card.getX() + 16, card.getY() + 12, card.getWidth() - 32, 24);
-        hint.setBounds(card.getX() + 16, card.getY() + 39, card.getWidth() - 32, 36);
-        int y = card.getY() + 83;
+        int y = card.getY() + 48;
         for (const auto& control : controls)
         {
             control.first->setBounds(card.getX() + 16, y, 86, 32);
@@ -528,19 +534,17 @@ void PadEditorPanel::resized()
         }
     };
     filterHeading.setBounds(filterCard.getX() + 16, filterCard.getY() + 10, filterCard.getWidth() - 32, 22);
-    filterHint.setBounds(filterCard.getX() + 16, filterCard.getY() + 34, filterCard.getWidth() - 32, 24);
     auto filterRow = [this](juce::Label& label, juce::Slider& slider, int y)
     {
         label.setBounds(filterCard.getX() + 16, filterCard.getY() + y, 86, 30);
         slider.setBounds(filterCard.getX() + 102, filterCard.getY() + y, filterCard.getWidth() - 118, 30);
     };
-    filterRow(cutoffLabel, cutoff, 62);
-    filterRow(filterMixLabel, filterMix, 94);
-    highPassHeading.setBounds(filterCard.getX() + 16, filterCard.getY() + 130, filterCard.getWidth() - 32, 22);
-    highPassHint.setBounds(filterCard.getX() + 16, filterCard.getY() + 154, filterCard.getWidth() - 32, 20);
-    filterRow(highPassCutoffLabel, highPassCutoff, 176);
-    filterRow(highPassMixLabel, highPassMix, 208);
-    layoutEffect(delayCard, delayHeading, delayHint,
+    filterRow(cutoffLabel, cutoff, 40);
+    filterRow(filterMixLabel, filterMix, 72);
+    highPassHeading.setBounds(filterCard.getX() + 16, filterCard.getY() + 114, filterCard.getWidth() - 32, 22);
+    filterRow(highPassCutoffLabel, highPassCutoff, 144);
+    filterRow(highPassMixLabel, highPassMix, 176);
+    layoutEffect(delayCard, delayHeading,
                  {{&delayTimeLabel, &delayTime}, {&delayFeedbackLabel, &delayFeedback}, {&delayMixLabel, &delayMix}});
     area.removeFromTop(14);
     for (std::size_t index = 0; index < extraEffects.size(); index += 2)
@@ -567,10 +571,41 @@ void PadEditorPanel::resized()
     closeButton.setBounds(buttons.removeFromRight(130));
     buttons.removeFromRight(10);
     saveButton.setBounds(buttons.removeFromRight(180));
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    if (appearance) appearance->applyLayout(*this);
+#endif
 }
 bool PadEditorPanel::keyPressed(const juce::KeyPress& key)
 {
     if (key == juce::KeyPress::escapeKey) { if (onClose) onClose(); return true; }
     return false;
+}
+void PadEditorPanel::registerAppearance(ProgramAppearance& model)
+{
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    appearance = &model;
+#define REGISTER(control) model.registerControl("editor." #control, control, *this)
+    REGISTER(waveform); REGISTER(heading); REGISTER(message); REGISTER(audioHeading); REGISTER(positionLabel); REGISTER(zoomLabel);
+    REGISTER(filterHeading); REGISTER(highPassHeading); REGISTER(delayHeading);
+    REGISTER(startLabel); REGISTER(endLabel); REGISTER(cutoffLabel); REGISTER(filterMixLabel); REGISTER(highPassCutoffLabel);
+    REGISTER(highPassMixLabel); REGISTER(delayTimeLabel); REGISTER(delayFeedbackLabel); REGISTER(delayMixLabel);
+    REGISTER(start); REGISTER(end); REGISTER(cutoff); REGISTER(filterMix); REGISTER(highPassCutoff); REGISTER(highPassMix);
+    REGISTER(delayTime); REGISTER(delayFeedback); REGISTER(delayMix);
+    REGISTER(saveButton); REGISTER(closeButton); REGISTER(playButton); REGISTER(stopPreviewButton);
+    REGISTER(zoomOutButton); REGISTER(zoomInButton); REGISTER(zoomResetButton); REGISTER(previewLoop); REGISTER(padLoop);
+#undef REGISTER
+    for (std::size_t effect = 0; effect < extraEffects.size(); ++effect)
+    {
+        auto& item = extraEffects[effect]; const auto prefix = "editor.effect" + juce::String(static_cast<int>(effect)) + ".";
+        model.registerControl(prefix + "enabled", item.enabled, *this);
+        for (int row = 0; row < item.rows; ++row)
+        {
+            model.registerControl(prefix + "label" + juce::String(row), item.labels[static_cast<std::size_t>(row)], *this);
+            model.registerControl(prefix + "slider" + juce::String(row), item.sliders[static_cast<std::size_t>(row)], *this);
+        }
+    }
+#else
+    juce::ignoreUnused(model);
+#endif
 }
 }

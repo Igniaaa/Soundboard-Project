@@ -1,6 +1,6 @@
 # Checklist per il rilascio di DualDeck 1.0
 
-Stato aggiornato al **7 novembre 2026**: preparazione di **1.0.0-rc1**,
+Stato aggiornato al **8 novembre 2026**: preparazione di **1.0.0-rc1**,
 cioè una versione candidata da collaudare prima della 1.0 stabile.
 
 ## Come usare questa checklist
@@ -167,10 +167,17 @@ Queste attività riguardano chi prepara il rilascio. Il pacchetto attuale è una
 candidata: la pubblicazione della 1.0 stabile viene dopo la chiusura delle
 verifiche applicabili e la registrazione degli eventuali limiti dichiarati.
 
-- [ ] **Definire il trattamento dell'integrazione Interception.** Risolvere e
-  documentare il punto aperto sull'accesso diretto SET_FILTER, oppure escludere
-  quell'integrazione dalla build pubblica. Lasciare DLL e driver fuori dallo ZIP
-  non chiude da solo questa attività. Vedere
+- [x] **Definire come distribuire l'integrazione Interception.** Scelta
+  dell'utente dell'8 novembre 2026: conservare la funzione, escludere DLL,
+  driver, installer e archivi Interception dal pacchetto e fornire istruzioni
+  per download ufficiale, installazione separata e collegamento della DLL x64.
+  Procedura in [GETTING-STARTED.md](GETTING-STARTED.md) e nel LEGGIMI generato
+  per `keyboard-runtime`. Non richiede installazioni o modifiche al driver locale.
+- [ ] **Verificare le condizioni applicabili all'integrazione esterna.**
+  Documentare gli obblighi della libreria e l'applicabilità dei termini upstream
+  all'accesso diretto SET_FILTER senza redistribuzione di driver e installer.
+  La scelta di distribuzione non registra da sola una verifica completa di
+  conformità; non è stata accertata una violazione. Vedere
   [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 - [ ] **Verificare la provenienza dei materiali distribuiti.** Controllare
   contributi di terzi, risorse e dipendenze; conservare i rispettivi testi di

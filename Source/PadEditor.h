@@ -6,6 +6,7 @@
 
 namespace dualdeck
 {
+class ProgramAppearance;
 class WaveformDisplay final : public juce::Component
 {
 public:
@@ -60,6 +61,7 @@ public:
     void resized() override;
     void paint(juce::Graphics&) override;
     bool keyPressed(const juce::KeyPress&) override;
+    void registerAppearance(ProgramAppearance&);
 private:
     struct ExtraEffect
     {
@@ -71,7 +73,7 @@ private:
     };
     VoiceSettings settings;
     WaveformDisplay waveform;
-    juce::Label heading, help, message, audioHeading, positionLabel, zoomLabel, filterHeading, filterHint, highPassHeading, highPassHint, delayHeading, delayHint;
+    juce::Label heading, message, audioHeading, positionLabel, zoomLabel, filterHeading, highPassHeading, delayHeading;
     juce::Label startLabel, endLabel, cutoffLabel, filterMixLabel, highPassCutoffLabel, highPassMixLabel, delayTimeLabel, delayFeedbackLabel, delayMixLabel;
     juce::Slider start, end, cutoff, filterMix, highPassCutoff, highPassMix, delayTime, delayFeedback, delayMix;
     juce::TextButton saveButton {"Salva impostazioni"}, closeButton {"Chiudi"};
@@ -82,5 +84,8 @@ private:
     std::array<ExtraEffect, 6> extraEffects;
     bool updating = false;
     bool originalPadLoop = false;
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    ProgramAppearance* appearance = nullptr;
+#endif
 };
 }

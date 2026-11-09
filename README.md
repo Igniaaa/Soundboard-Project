@@ -53,6 +53,11 @@ recupero dei dati e rimozione consulta la [guida al primo avvio](GETTING-STARTED
 
 ## Comandi essenziali
 
+La barra **File, Modifica, Visualizza, Strumenti e Aiuto** raccoglie i comandi
+di cartelle, profili, schermate e dispositivi. Nella build Foleys, **Visualizza**
+permette anche di personalizzare tema e controlli senza terminale: vedi
+[Aspetto con Foleys](FOLEYS-UI.md).
+
 | Azione | Come fare |
 | --- | --- |
 | Riprodurre un suono | Clic sinistro sul pad |
@@ -105,8 +110,11 @@ e DLL ufficiale x64 v1.0.1 nella cartella `keyboard-runtime` accanto all'eseguib
 
 Il pacchetto di anteprima non include né installa DLL, driver o installer
 Interception. Contiene `keyboard-runtime/LEGGIMI.txt` con le istruzioni per
-predisporre la DLL. I file del produttore sono nelle
-[release ufficiali di Interception](https://github.com/oblitum/Interception/releases/latest).
+installare separatamente il driver e collegare la DLL. La
+[procedura completa](GETTING-STARTED.md#tastiera-dedicata-opzionale) comprende
+download, installazione, riavvio, controllo della DLL, prova e disinstallazione.
+I file del produttore sono nella
+[release ufficiale v1.0.1 di Interception](https://github.com/oblitum/Interception/releases/tag/v1.0.1).
 
 Una volta predisposti i componenti:
 

@@ -11,7 +11,7 @@ import tempfile
 import zipfile
 
 ROOT_FILES = (
-    "CMakeLists.txt", "Build.ps1", "Setup.ps1", "Test.ps1", "VERSION", "LICENSE",
+    "CMakeLists.txt", "Build.ps1", "Setup.ps1", "Setup-Foleys.ps1", "FOLEYS-UI.md", "Test.ps1", "VERSION", "LICENSE",
     "COPYRIGHT.md", "README.md", "GETTING-STARTED.md", "BUILDING.md",
     "CONTRIBUTING.md", "THIRD-PARTY-NOTICES.md", "RELEASE-CHECKLIST.md",
     "CHANGELOG.md", "VERIFICA-RELEASE.md", "JUCE-LICENSE.md", "LEGGIMI.md", "GITHUB.md",
@@ -27,7 +27,7 @@ ROOT_FILES = (
 )
 SOURCE_DIRS = ("Source", "Tests", "scripts", "Assets", ".github")
 JUCE_HASH = "16ad4cfca70b73df6352e4e840ba5dc2e755d36b8ab2dd976ef3ecedcd18f6a9"
-EXTENSIONS = {".cpp", ".h", ".py", ".ps1", ".md", ".txt", ".yml", ".yaml", ".ico", ".png"}
+EXTENSIONS = {".cpp", ".h", ".py", ".ps1", ".md", ".txt", ".yml", ".yaml", ".ico", ".png", ".xml"}
 KEYBOARD_RUNTIME_INSTRUCTIONS = r"""Tastiera dedicata: preparare Interception
 
 Questa cartella contiene solo istruzioni. La DLL, il driver e l'installer
@@ -50,17 +50,38 @@ Interception non sono inclusi nel pacchetto DualDeck.
    Per confrontarlo, dalla cartella di DualDeck eseguire in PowerShell:
    Get-FileHash .\keyboard-runtime\interception.dll -Algorithm SHA256
 
-4. Il blocco della tastiera richiede anche il driver Interception installato
-   separatamente. Copiare la DLL non installa il driver. Seguire le istruzioni
-   e i requisiti del produttore; l'installazione richiede privilegi amministrativi.
+4. Se il driver non e gia installato e funzionante, aprire PowerShell come
+   amministratore nella cartella estratta Interception/command line installer.
+   Visualizzare le istruzioni del produttore:
+   .\install-interception.exe
+   Per installare:
+   .\install-interception.exe /install
+   Controllare l'esito e riavviare Windows dopo l'installazione riuscita.
+   Copiare la DLL non installa il driver. DualDeck non esegue l'installer.
+   Se Windows rifiuta il driver, usare la soundboard senza blocco dedicato;
+   non disattivare le protezioni di Windows per aggirare il rifiuto.
    Progetto: https://github.com/oblitum/Interception
 
-5. Riaprire DualDeck, riconoscere la dedicata con F12, rilasciare tutti i tasti
-   e attivare il blocco. Verificare in Blocco note che la dedicata comandi i pad
+5. Riaprire DualDeck senza privilegi amministrativi. L'app trova automaticamente
+   la DLL nel percorso indicato: non occorre registrarla o scegliere un percorso.
+   In Tastiera dedicata premere Riconosci con F12, quindi premere e rilasciare
+   F12 sulla dedicata. Rilasciare tutti i tasti e attivare il blocco.
+   Verificare in Blocco note che la dedicata comandi i pad
    senza scrivere e che la principale continui a scrivere. Disattivare il blocco
    e verificare che anche la dedicata torni a scrivere.
 
-Per i limiti dell'anteprima e le condizioni della dipendenza, leggere
+Se la DLL manca, controllare il percorso. Se e rifiutata, confrontare versione
+x64 v1.0.1 e hash. Se il driver non e disponibile o e occupato, controllare
+l'esito dell'installer, riavviare e chiudere altre app che usano Interception.
+
+Per disinstallare il driver, disattivare il blocco e chiudere le app che usano
+Interception. Dalla cartella dell'installer originale, in PowerShell come
+amministratore, eseguire:
+.\install-interception.exe /uninstall
+Controllare l'esito e riavviare Windows dopo la disinstallazione riuscita.
+Rimuovere la sola DLL non disinstalla il driver.
+
+Guida completa, risoluzione dei problemi e condizioni della dipendenza:
 GETTING-STARTED.md e THIRD-PARTY-NOTICES.md nella cartella principale di DualDeck.
 """
 

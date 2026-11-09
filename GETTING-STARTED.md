@@ -21,17 +21,97 @@ Lo ZIP contiene già `keyboard-runtime/LEGGIMI.txt`, con i passaggi per scaricar
 e aggiungere la DLL corretta e verificarne l'hash. La cartella contiene solo
 istruzioni: questa anteprima non distribuisce né installa DLL, driver o installer.
 
-Sorgente e istruzioni del produttore: https://github.com/oblitum/Interception .
-Installare un driver è distinto dall'avvio dell'app e richiede privilegi
-amministrativi. Non modificare le impostazioni di sicurezza Windows per aggirare
-un rifiuto. La compatibilità non è garantita per tutte le versioni e periferiche.
-Le condizioni upstream e l'uso diretto SET_FILTER rimangono da chiarire prima
-della release stabile: vedere THIRD-PARTY-NOTICES.md.
+### 1. Scaricare Interception dal produttore
 
-Predisposti i requisiti, riconoscere la dedicata con F12, rilasciare tutti i tasti
-e attivare il blocco. Provare nel Blocco note: la dedicata comanda i pad senza
-scrivere, la principale scrive. Disattivare e verificare il ritorno della
-scrittura. L'attivazione dopo avvio o cambio dispositivo deve restare manuale.
+Chiudere DualDeck. Dalla [release ufficiale v1.0.1 di Interception](https://github.com/oblitum/Interception/releases/tag/v1.0.1)
+scaricare **Interception.zip** nella sezione Assets, quindi estrarlo in una
+cartella separata. Non scegliere gli archivi Source code. Conservare la cartella
+`licenses` del produttore e consultarne le condizioni; gli avvisi sulle dipendenze
+sono in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+### 2. Installare il driver
+
+Se il driver è già installato e funzionante, passare al collegamento della DLL.
+Altrimenti aprire PowerShell **come amministratore**, entrare nella cartella
+`Interception\command line installer` estratta e visualizzare le istruzioni:
+
+```powershell
+.\install-interception.exe
+```
+
+Per installare il driver:
+
+```powershell
+.\install-interception.exe /install
+```
+
+Controllare l'esito e, dopo un'installazione riuscita, **riavviare Windows**.
+L'installazione è un'operazione separata da DualDeck: l'app non la esegue.
+Se Windows rifiuta il driver, conservare il messaggio e usare la soundboard
+senza blocco dedicato; non disattivare le protezioni di Windows per aggirarlo.
+
+### 3. Collegare la DLL a DualDeck
+
+Con DualDeck chiuso, copiare il file
+`Interception\library\x64\interception.dll` dell'archivio ufficiale nella
+cartella `keyboard-runtime` accanto all'eseguibile. La disposizione deve essere:
+
+```text
+DualDeck/
+  DualDeck.exe
+  keyboard-runtime/
+    LEGGIMI.txt
+    interception.dll
+```
+
+Usare la DLL **x64 v1.0.1**, anche se l'archivio contiene una cartella x86.
+Non occorre copiarla nelle cartelle di sistema o registrarla con regsvr32.
+Dalla cartella di DualDeck verificarla con PowerShell:
+
+```powershell
+Get-FileHash .\keyboard-runtime\interception.dll -Algorithm SHA256
+```
+
+Il valore atteso è:
+`AB88164C11B1B48488772D4C3BFAA4509D5B0AE9DBC5A691DC4F96F0260443C8`.
+DualDeck trova automaticamente la DLL in questo percorso; non c'è un percorso
+da selezionare nell'app. Copiare la DLL non installa il driver.
+
+### 4. Riconoscere e provare la tastiera
+
+Aprire DualDeck senza privilegi amministrativi. In **Tastiera dedicata** premere
+**Riconosci con F12**, poi premere e rilasciare F12 sulla tastiera da dedicare.
+Rilasciare tutti i tasti, attivare il blocco e attendere lo stato attivo.
+Provare con Blocco note in primo piano: la dedicata deve comandare i pad senza
+scrivere, mentre la principale deve scrivere normalmente. Disattivare il blocco
+e controllare che anche la dedicata torni a scrivere.
+
+Dopo avvio o cambio dispositivo l'attivazione resta manuale. La compatibilità
+non è garantita per tutte le versioni Windows e periferiche.
+
+### Se il collegamento non funziona
+
+- **DLL mancante o non leggibile:** controllare il percorso accanto
+  all'eseguibile effettivamente avviato e riaprire DualDeck.
+- **DLL diversa da quella verificata:** confrontare versione, architettura
+  x64 e hash; usare il file della release ufficiale indicata.
+- **Driver non disponibile o occupato:** controllare l'esito dell'installer,
+  riavviare dopo l'installazione e chiudere altre applicazioni che usano
+  Interception prima di riprovare.
+- **Tastiera non riconosciuta:** verificare il collegamento e ripetere
+  **Riconosci con F12** sulla dedicata.
+
+### Disinstallare Interception
+
+Disattivare il blocco e chiudere DualDeck e le altre app che usano Interception.
+Da PowerShell come amministratore, nella cartella dell'installer originale:
+
+```powershell
+.\install-interception.exe /uninstall
+```
+
+Dopo la disinstallazione riuscita riavviare Windows. Rimuovere la sola DLL dalla
+cartella di DualDeck non disinstalla il driver.
 
 ## Discord e microfono
 

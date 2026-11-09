@@ -14,23 +14,29 @@ juce::Result runPreloadTests(const juce::File& tempRoot);
 juce::Result runPreloadProbe(juce::StringArray& report);
 juce::Result runWindowsStreamReaderTests(const juce::File& tempRoot);
 juce::Result runStreamingTests(const juce::File& tempRoot);
+juce::Result runFoleysAudioUiTests();
+juce::Result runMainScreenUiTests();
 
-class DeckWindow final : public juce::DocumentWindow
+class DeckWindow final : public juce::DocumentWindow, private juce::KeyListener
 {
 public:
-    explicit DeckWindow(bool smoke, bool uiEditor) : DocumentWindow("DualDeck - JUCE Edition", palette::background, allButtons)
+    explicit DeckWindow(bool smoke, bool uiEditor) : DocumentWindow("DualDeck", palette::background, allButtons)
     {
         setUsingNativeTitleBar(true);
         auto content = std::make_unique<juce::Viewport>();
         deck = new MainComponent(smoke, uiEditor);
+        setLookAndFeel(&deck->getLookAndFeel());
         content->setViewedComponent(deck, true);
         viewport = content.get();
         setContentOwned(content.release(), true);
+        setMenuBar(deck, 24);
+        addKeyListener(this);
         setResizable(true, false); setResizeLimits(960, 640, 2400, 1600);
         centreWithSize(1380, 880); setVisible(!smoke);
         if (!smoke) matchNativeTitleBar();
     }
     MainComponent& board() const { return *deck; }
+    ~DeckWindow() override { removeKeyListener(this); setMenuBar(nullptr); setLookAndFeel(nullptr); }
     void resized() override
     {
         DocumentWindow::resized();
@@ -42,6 +48,15 @@ public:
     }
     void closeButtonPressed() override { juce::JUCEApplication::getInstance()->systemRequestedQuit(); }
 private:
+    bool keyPressed(const juce::KeyPress& key, juce::Component*) override
+    {
+        if (!key.getModifiers().isAltDown() || key.getModifiers().isCtrlDown()) return false;
+        const auto letter = juce::CharacterFunctions::toLowerCase(static_cast<juce::juce_wchar>(key.getKeyCode()));
+        const juce::String shortcuts("fmvsa"); const int index = shortcuts.indexOfChar(letter);
+        if (index < 0) return false;
+        if (auto* bar = dynamic_cast<juce::MenuBarComponent*>(getMenuBarComponent())) { bar->showMenu(index); return true; }
+        return false;
+    }
     void matchNativeTitleBar()
     {
 #if JUCE_WINDOWS
@@ -61,7 +76,7 @@ private:
 class DualDeckApplication final : public juce::JUCEApplication
 {
 public:
-    const juce::String getApplicationName() override { return "DualDeck JUCE"; }
+    const juce::String getApplicationName() override { return "DualDeck"; }
     const juce::String getApplicationVersion() override { return DUALDECK_VERSION; }
     bool moreThanOneInstanceAllowed() override
     {
@@ -333,6 +348,15 @@ public:
             report.add("Pad numbering / sorting / pages / filters / keyboard: "
                 + (ordering.wasOk() ? juce::String("PASS") : ordering.getErrorMessage()));
             if (ordering.failed()) ++failures;
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+            const auto mainUi = runMainScreenUiTests();
+            report.add("Live Foleys main screen: " + (mainUi.wasOk() ? juce::String("PASS") : mainUi.getErrorMessage()));
+            if (mainUi.failed()) ++failures;
+            const auto audioUi = runFoleysAudioUiTests();
+            report.add("Foleys menus / whole-program appearance / audio controls: "
+                + (audioUi.wasOk() ? juce::String("PASS") : audioUi.getErrorMessage()));
+            if (audioUi.failed()) ++failures;
+#endif
             report.add("Physical two-keyboard timing and screen-reader speech still require a person at the device.");
             report.add("Failures: " + juce::String(failures));
             destination.replaceWithText(report.joinIntoString("\n"));
@@ -419,6 +443,9 @@ public:
         uiEditor = (!smoke && !startupCheck) || uiEditorSnapshot;
 #endif
         window = std::make_unique<DeckWindow>(smoke, uiEditor);
+#if defined(DUALDECK_FOLEYS_DESIGNER)
+        if (args.contains("--foleys-editor")) window->board().showAudioUiDesigner();
+#endif
         if (startupCheck || uiEditorSnapshot) window->setVisible(false);
         if (smoke || startupCheck || uiEditorSnapshot)
         {
@@ -429,7 +456,7 @@ public:
             juce::Timer::callAfterDelay(350, [this, destination]
             {
                 destination.getParentDirectory().createDirectory();
-                auto image = window->getContentComponent()->createComponentSnapshot(window->getContentComponent()->getLocalBounds());
+                auto image = window->createComponentSnapshot(window->getLocalBounds());
                 juce::FileOutputStream stream(destination);
                 if (stream.openedOk()) { stream.setPosition(0); stream.truncate(); juce::PNGImageFormat format; format.writeImageToStream(image, stream); }
                 else setApplicationReturnValue(1);

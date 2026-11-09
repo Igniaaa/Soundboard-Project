@@ -1,10 +1,12 @@
 param(
     [switch]$SkipTests, [string]$ToolRoot = $PSScriptRoot, [string]$OutputName = '',
-    [switch]$NoPromote, [string]$BuildDirectory = '', [string]$JuceDirectory = '',
+    [switch]$NoPromote, [switch]$FoleysAudioUi, [switch]$FoleysDesigner,
+    [string]$BuildDirectory = '', [string]$JuceDirectory = '',
     [ValidateSet('Auto','Portable','Installed')][string]$Toolchain = 'Auto'
 )
 $ErrorActionPreference = 'Stop'
 $taskRoot = $PSScriptRoot
+if ($FoleysDesigner) { $FoleysAudioUi = $true }
 if ($OutputName -and ([System.IO.Path]::GetFileName($OutputName) -ne $OutputName -or [System.IO.Path]::GetExtension($OutputName) -ne '.exe')) {
     throw 'OutputName deve essere un nome di file .exe senza cartelle.'
 }
@@ -13,7 +15,7 @@ $taskCtest = Join-Path $ToolRoot 'tools\cmake-4.4.4-windows-x86_64\bin\ctest.exe
 $taskMsvcRoot = Join-Path $ToolRoot 'tools\msvc'
 if (-not (Test-Path -LiteralPath $taskCmake)) { throw 'Esegui prima Setup.ps1 per scaricare gli strumenti portatili.' }
 $taskOld = @{ PATH=$env:PATH; INCLUDE=$env:INCLUDE; LIB=$env:LIB }
-$taskBuild = if ($BuildDirectory) { [System.IO.Path]::GetFullPath($BuildDirectory) } else { Join-Path $taskRoot 'build-msvc' }
+$taskBuild = if ($BuildDirectory) { [System.IO.Path]::GetFullPath($BuildDirectory) } elseif ($FoleysDesigner) { Join-Path $taskRoot 'build-foleys-designer' } elseif ($FoleysAudioUi) { Join-Path $taskRoot 'build-foleys' } else { Join-Path $taskRoot 'build-msvc' }
 $taskVersion = (Get-Content -LiteralPath (Join-Path $taskRoot 'VERSION') -Raw).Trim()
 if ($taskVersion -notmatch '^\d+\.\d+\.\d+-rc[1-9]\d*$') { throw 'VERSION non identifica una candidata valida.' }
 $taskPortable = $Toolchain -eq 'Portable' -or ($Toolchain -eq 'Auto' -and (Test-Path -LiteralPath (Join-Path $taskMsvcRoot 'VC\Tools\MSVC')))
@@ -34,13 +36,15 @@ try {
     foreach ($taskPart in @('ucrt','shared','um','winrt','cppwinrt')) { $taskIncludes += Join-Path $taskSdk.FullName $taskPart }
     $env:INCLUDE = $taskIncludes -join ';'
     $env:LIB = @((Join-Path $taskMsvc.FullName 'lib\x64'),(Join-Path $taskSdkRoot ('Lib\' + $taskSdk.Name + '\ucrt\x64')),(Join-Path $taskSdkRoot ('Lib\' + $taskSdk.Name + '\um\x64'))) -join ';'
-    $taskConfigure = @('-S', $taskRoot, '-B', $taskBuild, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_C_COMPILER=cl.exe', '-DCMAKE_CXX_COMPILER=cl.exe')
+    $taskConfigure = @('-S', $taskRoot, '-B', $taskBuild, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_C_COMPILER=cl.exe', '-DCMAKE_CXX_COMPILER=cl.exe', '-DCMAKE_TRY_COMPILE_CONFIGURATION=Release')
     $taskGenerator = 'Ninja'
   } else {
     $taskGenerator = 'Visual Studio 17 2022'
     $taskConfigure = @('-S', $taskRoot, '-B', $taskBuild, '-G', $taskGenerator, '-A', 'x64')
   }
     $taskConfigure += '-DJUCE_DIR=' + $taskJuce
+    $taskConfigure += '-DDUALDECK_FOLEYS_AUDIO_UI=' + $(if ($FoleysAudioUi) { 'ON' } else { 'OFF' })
+    $taskConfigure += '-DDUALDECK_FOLEYS_DESIGNER=' + $(if ($FoleysAudioUi) { 'ON' } else { 'OFF' })
     $taskCache = Join-Path $taskBuild 'CMakeCache.txt'
     if (Test-Path -LiteralPath $taskCache) {
         $taskCachedRoot = Get-Content -LiteralPath $taskCache | Where-Object { $_ -like 'CMAKE_HOME_DIRECTORY:INTERNAL=*' } | Select-Object -First 1
@@ -64,7 +68,7 @@ try {
     $taskBinary = Join-Path $taskBuild 'bin\DualDeckJuce.exe'
     & python $taskReleaseScript stamp --root $taskRoot --binary $taskBinary --expected-source $taskSourceFingerprint --juce-directory $taskJuce
     if ($LASTEXITCODE -ne 0) { throw 'Sorgenti cambiati durante la build: ricompilare prima di distribuire.' }
-    if ($NoPromote) { Write-Output ('Build pronta, copie approvate invariate: ' + $taskBinary); return }
+    if ($NoPromote -or $FoleysAudioUi) { Write-Output ('Build pronta, copie approvate invariate: ' + $taskBinary); return }
     if ($OutputName) {
         $taskTrial = Join-Path $taskRoot $OutputName
         Copy-Item -LiteralPath $taskBinary -Destination $taskTrial -Force

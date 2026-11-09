@@ -1,9 +1,9 @@
 {
   "format": "vectorcraft",
   "version": 4,
-  "generator": "VectorCraft 0.14.0",
+  "generator": "VectorCraft 0.22.0",
   "document": {
-    "version": 1,
+    "version": 3,
     "title": "Untitled-1",
     "units": "Pixels",
     "rulers": "artboard",
@@ -116,7 +116,7 @@
                       },
                       "angle": -2.6630007660671424
                     },
-                    "width": 0.75,
+                    "width": 3.0,
                     "join": "Round",
                     "align": "Outside"
                   }
@@ -251,7 +251,7 @@
                 ],
                 "runs": [
                   {
-                    "text": "D",
+                    "text": "D\t",
                     "style": {
                       "font_family": "Unispace",
                       "font_style": "Regular",
@@ -331,18 +331,18 @@
                         "type": "solid",
                         "color": {
                           "model": "rgb",
-                          "r": 0.0,
-                          "g": 0.0,
-                          "b": 0.0
+                          "r": 1.0,
+                          "g": 1.0,
+                          "b": 1.0
                         }
                       },
                       "stroke": {
                         "type": "solid",
                         "color": {
                           "model": "rgb",
-                          "r": 1.0,
-                          "g": 1.0,
-                          "b": 1.0
+                          "r": 0.0,
+                          "g": 0.0,
+                          "b": 0.0
                         }
                       },
                       "stroke_width": 0.25,
@@ -1617,7 +1617,7 @@
       "copyrightNotice": "",
       "copyrightUrl": "",
       "created": 1792695255,
-      "modified": 1792781992
+      "modified": 1794169143
     },
     "last_view": {
       "name": "",

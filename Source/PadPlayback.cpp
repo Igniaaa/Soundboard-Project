@@ -168,6 +168,8 @@ void MainComponent::handleLocalKey(const juce::String& key, bool down)
         return;
     }
     if (!hasKeyboardFocus(true) || (textEditorFocused() && !binding)) return;
+    const auto modifiers = juce::ModifierKeys::getCurrentModifiersRealtime();
+    if (!binding && (modifiers.isAltDown() || modifiers.isCtrlDown() || modifiers.isCommandDown())) return;
     auto* focus = juce::Component::getCurrentlyFocusedComponent();
     // Preserve keyboard navigation/activation of the focused graphical controls.
     if (localKeyIsNavigation(key, focus, juce::ModifierKeys::getCurrentModifiersRealtime().isShiftDown())) return;

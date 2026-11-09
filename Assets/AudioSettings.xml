@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<magic>
+  <Styles>
+    <Style name="DualDeck">
+      <Nodes/>
+      <Classes>
+        <section flex-direction="column" min-height="116" max-height="116"
+                 margin="0 0 12 0" padding="16" border="1" border-color="ff28384b"
+                 background-color="ff182536" radius="8" max-width="840"/>
+        <heading min-height="28" max-height="28"/>
+        <device min-height="36" max-height="36"/>
+        <toggle min-height="32" max-height="32"/>
+        <primary button-color="ff63dfc4" text-color="ff0b111b"/>
+      </Classes>
+      <Types>
+        <View margin="0" padding="0" border="0" background-color="00000000"/>
+        <AudioControl margin="0" padding="0" border="0" background-color="00000000" radius="0"/>
+      </Types>
+    </Style>
+  </Styles>
+  <View flex-direction="column" padding="24" background-color="ff121c29" radius="12">
+    <View class="section">
+      <AudioControl id="outputHeading" class="heading"/>
+      <AudioControl id="outputDevice" class="device"/>
+    </View>
+    <View class="section" min-height="152" max-height="152">
+      <AudioControl id="monitorHeading" class="heading"/>
+      <AudioControl id="monitorEnabled" class="toggle"/>
+      <AudioControl id="monitorDevice" class="device"/>
+    </View>
+    <View class="section" min-height="240" max-height="240">
+      <AudioControl id="microphoneHeading" class="heading"/>
+      <AudioControl id="microphoneEnabled" class="toggle"/>
+      <AudioControl id="inputDevice" class="device"/>
+      <AudioControl id="microphoneMonitor" class="toggle"/>
+      <View min-height="40" max-height="40" flex-direction="row">
+        <AudioControl id="microphoneGainHeading" min-width="160" max-width="160"/>
+        <AudioControl id="microphoneGain"/>
+      </View>
+    </View>
+    <View/>
+    <View min-height="44" max-height="44" max-width="840" flex-direction="row">
+      <AudioControl id="applyAudio" class="primary" min-width="192" max-width="192" margin="4 12 4 0"/>
+      <AudioControl id="refreshDevices" min-width="210" max-width="210" margin="4 0"/>
+      <View/>
+    </View>
+  </View>
+</magic>

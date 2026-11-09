@@ -1,7 +1,13 @@
 #include "../Source/MainComponent.h"
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+#include "../Source/AudioSettingsPanel.h"
+#include "../Source/ProgramAppearance.h"
+#include "../Source/MainScreenPanel.h"
+#endif
 
 namespace dualdeck
 {
+juce::Result runProgramAppearancePreviewTests();
 juce::Result runPreloadTests(const juce::File& tempRoot)
 {
     const auto root = tempRoot.getChildFile(juce::Uuid().toString());
@@ -568,6 +574,243 @@ juce::Result runLibraryFeatureTests(const juce::File& tempRoot)
     return juce::Result::ok();
 }
 
+juce::Result runFoleysAudioUiTests()
+{
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    const auto previewResult = runProgramAppearancePreviewTests();
+    if (previewResult.failed()) return previewResult;
+    auto board = std::make_unique<MainComponent>(true);
+    auto* menus = dynamic_cast<juce::MenuBarModel*>(board.get());
+    if (menus == nullptr || menus->getMenuBarNames() != juce::StringArray {"File", "Modifica", "Visualizza", "Strumenti", "Aiuto"})
+        return juce::Result::fail("Conventional application menus are missing");
+    menus->menuItemSelected(MainComponent::showDedicatedKeyboard, 2);
+    if (board->view != 2 || !board->keyboardDevice.isVisible()) return juce::Result::fail("Menu navigation did not reach dedicated keyboard");
+    menus->menuItemSelected(MainComponent::showKeyboard, 2);
+    if (board->view != 0 || !board->keyboardMode) return juce::Result::fail("Menu navigation did not reach graphical keyboard");
+    menus->menuItemSelected(MainComponent::showPads, 2);
+    if (!board->programAppearance || !board->mainScreenPanel->findNode("padTile1").isValid()
+        || !board->mainScreenPanel->findNode("keyboardDevice").isValid()
+        || !board->programAppearance->findNode("editor.waveform").isValid())
+        return juce::Result::fail("Whole-program appearance registry is incomplete");
+    auto* panel = board->audioSettingsPanel.get();
+    if (panel == nullptr) return juce::Result::fail("Audio page is not hosted by Foleys");
+    if (panel->isVisible()) return juce::Result::fail("Audio settings leaked onto the soundboard");
+    board->setView(1);
+    if (!panel->isVisible()) return juce::Result::fail("Audio navigation did not reveal the Foleys panel");
+    auto prototype = board->audioSettingsPanel->builder.createGuiItem(juce::ValueTree("AudioControl"));
+    if (!prototype || prototype->getSettableProperties().empty() || !prototype->getColourNames().contains("text-color"))
+        return juce::Result::fail("Designer does not expose custom control style properties");
+#if defined(DUALDECK_FOLEYS_DESIGNER)
+    for (const auto* id : {"editAppearance", "saveAppearance", "resetAppearance"})
+    {
+        auto* action = dynamic_cast<juce::TextButton*>(board->mainScreenPanel->wrappedControl(id));
+        if (action == nullptr || !action->isVisible() || !action->isEnabled() || !action->onClick)
+            return juce::Result::fail("Appearance editing requires a terminal: missing toolbar action");
+    }
+#endif
+    std::vector<juce::Component*> controls {&board->outputLabel, &board->outputDevice,
+        &board->monitorLabel, &board->monitorToggle, &board->monitorDevice,
+        &board->microphoneLabel, &board->microphoneToggle, &board->inputDevice,
+        &board->microphoneMonitorToggle, &board->microphoneGainLabel, &board->microphoneVolume,
+        &board->applyButton, &board->scanButton};
+    board->outputDevice.addItem("UI test output", 9001);
+    board->outputDevice.setSelectedId(9001, juce::dontSendNotification);
+    board->microphoneVolume.setValue(37, juce::sendNotificationSync);
+    if (std::abs(board->library.microphoneVolume - 0.37f) > 0.001f)
+        return juce::Result::fail("Foleys microphone slider lost the existing gain callback");
+    for (int width : {1380, 940})
+    {
+        board->setSize(width, 880);
+        std::vector<juce::Rectangle<int>> bounds;
+        for (auto* control : controls)
+        {
+            const auto box = panel->getLocalArea(control, control->getLocalBounds());
+            if (!panel->isParentOf(control) || !control->isVisible()
+                || box.getWidth() < 24 || box.getHeight() < 16 || !panel->getLocalBounds().contains(box))
+                return juce::Result::fail("An audio control is missing or outside the Foleys panel");
+            for (const auto& other : bounds)
+                if (other.intersects(box)) return juce::Result::fail("Audio controls overlap");
+            bounds.push_back(box);
+        }
+    }
+    board->setView(0);
+    if (panel->isVisible()) return juce::Result::fail("Audio settings remained on the soundboard");
+    board->setView(2); board->setView(1);
+    board->microphoneVolume.setTitle("Volume del microfono");
+    board->microphoneVolume.setDescription("Livello della voce");
+    board->microphoneVolume.setExplicitFocusOrder(7);
+    board->audioSettingsPanel->rebuild();
+    board->audioSettingsPanel->rebuild();
+    if (board->outputDevice.getSelectedId() != 9001 || board->microphoneVolume.getValue() != 37)
+        return juce::Result::fail("Navigation or layout rebuilding reset pending audio settings");
+    for (auto* control : controls)
+        if (!panel->isParentOf(control)) return juce::Result::fail("Layout rebuilding detached an audio control");
+    board->microphoneVolume.setValue(61, juce::sendNotificationSync);
+    if (std::abs(board->library.microphoneVolume - 0.61f) > 0.001f)
+        return juce::Result::fail("Layout rebuilding lost the microphone gain callback");
+    if (board->microphoneVolume.getTitle() != "Volume del microfono"
+        || board->microphoneVolume.getDescription() != "Livello della voce"
+        || board->microphoneVolume.getExplicitFocusOrder() != 7)
+        return juce::Result::fail("Layout rebuilding discarded accessibility metadata");
+    board->scanButton.onClick();
+    if (board->statusLabel.getText() != "Elenco dispositivi aggiornato.")
+        return juce::Result::fail("Device refresh action was disconnected");
+    board->applyButton.onClick();
+    if (board->saveGeneration.load() != 0)
+        return juce::Result::fail("Audio UI test attempted to persist settings");
+    if (board->audio.main.isOpen()) return juce::Result::fail("UI test opened an audio device");
+
+#if defined(DUALDECK_FOLEYS_DESIGNER)
+    const auto fixtureRoot = findProjectRoot().getChildFile("test-output/appearance-fixtures").getChildFile(juce::Uuid().toString());
+    if (fixtureRoot.createDirectory().failed()) return juce::Result::fail("Cannot create appearance fixture");
+    struct Cleanup { juce::File folder; ~Cleanup() { folder.deleteRecursively(); } } cleanup {fixtureRoot};
+    const auto programFile = fixtureRoot.getChildFile("program.xml");
+    auto& program = *board->programAppearance;
+    if (program.loadAppearance(programFile).failed()) return juce::Result::fail("Cannot initialise program appearance fixture");
+    auto* editorHeading = dynamic_cast<juce::Label*>(board->editorPanel.findChildWithID("editor.heading"));
+    auto* wave = board->editorPanel.findChildWithID("editor.waveform");
+    if (!editorHeading || !wave) return juce::Result::fail("Editor appearance controls missing");
+    const auto originalHeading = editorHeading->getBounds();
+    auto headingNode = program.findNode("editor.heading");
+    headingNode.setProperty("offset-y", 7, nullptr); headingNode.setProperty("font-size", 22.0, nullptr);
+    board->editorPanel.resized(); board->editorPanel.resized();
+    if (editorHeading->getY() != originalHeading.getY() + 7) return juce::Result::fail("Editor offsets compounded on reflow");
+    auto themeNode = program.findNode("programTheme");
+    themeNode.setProperty("app-background", "ff202c38", nullptr);
+    themeNode.setProperty("app-panel", "ff202c38", nullptr);
+    themeNode.setProperty("app-background", "ff222d39", nullptr);
+    if (board->audioSettingsPanel->state.getGuiTree().getChildWithName("View")["background-color"].toString() != "ff202c38")
+        return juce::Result::fail("Equal palette colours lost their separate semantic roles");
+    themeNode.setProperty("app-panel", "ff253545", nullptr);
+    themeNode.setProperty("font-scale", 1.1, nullptr);
+    board->setStatus("Appearance warning fixture", true);
+    themeNode.setProperty("app-warning", "ffeeaa33", nullptr);
+    if (board->statusLabel.findColour(juce::Label::textColourId) != juce::Colour(0xffeeaa33))
+        return juce::Result::fail("Theme changes lost a live warning's semantic colour");
+    program.findNode("editor.waveform").setProperty("line-color", "ffcc6677", nullptr);
+    if (wave->findColour(uiColours::line, true) != juce::Colour(0xffcc6677) || std::abs(editorHeading->getFont().getHeight() - 22.0f) > 0.01f)
+        return juce::Result::fail("Effects editor colours or fonts were lost");
+    const auto themedAudioFile = fixtureRoot.getChildFile("themed-audio.xml");
+    board->audioSettingsPanel->layoutFile = themedAudioFile;
+    if (board->audioSettingsPanel->saveAppearance().failed() || program.saveAppearance().failed()) return juce::Result::fail("Cannot save themed fixture");
+    const auto programSaved = programFile.loadFileAsString();
+    auto programReopened = std::make_unique<MainComponent>(true);
+    if (programReopened->programAppearance->loadAppearance(programFile).failed()
+        || programReopened->findColour(uiColours::background, true) != juce::Colour(0xff222d39))
+        return juce::Result::fail("Saved program theme did not reload");
+    auto essential = program.findNode("editor.waveform"); essential.getParent().removeChild(essential, nullptr);
+    if (program.saveAppearance().wasOk() || programFile.loadFileAsString() != programSaved)
+        return juce::Result::fail("Incomplete program appearance replaced the last good file");
+    programFile.replaceWithText("<broken>");
+    if (program.loadAppearance(programFile).wasOk() || programFile.loadFileAsString() != "<broken>" || editorHeading->getBounds() != originalHeading)
+        return juce::Result::fail("Malformed program appearance failed to restore defaults safely");
+    programFile.replaceWithText(programSaved); program.loadAppearance(programFile);
+    if (program.resetAppearance().failed() || editorHeading->getBounds() != originalHeading)
+        return juce::Result::fail("Program reset lost default editor layout");
+    programReopened->audioSettingsPanel->layoutFile = themedAudioFile;
+    if (programReopened->audioSettingsPanel->loadAppearance().failed() || programReopened->programAppearance->loadAppearance(programFile).failed()
+        || programReopened->audioSettingsPanel->state.getGuiTree().getChildWithName("View")["background-color"].toString() != "ff121c29")
+        return juce::Result::fail("Audio palette prevented default theme from applying at restart");
+    const auto savedProgramDefaults = programFile.loadFileAsString();
+    auto hiddenProgram = juce::ValueTree::fromXml(savedProgramDefaults);
+    auto programView = hiddenProgram.getChildWithName("View"); auto required = programView.getChildWithProperty("id", "editor.waveform");
+    programView.removeChild(required, nullptr); juce::ValueTree fake("View"); fake.setProperty("id", "editor.waveform", nullptr); programView.addChild(fake, -1, nullptr);
+    programFile.replaceWithText(hiddenProgram.toXmlString());
+    if (program.loadAppearance(programFile).wasOk()) return juce::Result::fail("Missing editor control masquerading as View was accepted");
+    programFile.replaceWithText(savedProgramDefaults); program.loadAppearance(programFile);
+    auto programTree = program.findNode("programTheme").getParent().getParent();
+    programTree.setProperty("notes", juce::String::repeatedString("x", 1024 * 1024), nullptr);
+    if (program.saveAppearance().wasOk() || programFile.loadFileAsString() != savedProgramDefaults) return juce::Result::fail("Oversize program appearance was saved");
+    programTree.removeProperty("notes", nullptr);
+    auto classes = programTree.getChildWithName("Styles").getChild(0).getChildWithName("Classes");
+    juce::ValueTree liveColour("liveColour"); classes.addChild(liveColour, -1, nullptr); liveColour.setProperty("line-color", "ffcc2255", nullptr);
+    program.findNode("editor.waveform").removeProperty("line-color", nullptr); program.findNode("editor.waveform").setProperty("class", "liveColour", nullptr);
+    if (wave->findColour(uiColours::line, true) != juce::Colour(0xffcc2255)) return juce::Result::fail("New colour-only class failed to apply live");
+    program.findNode("editor.heading").setProperty("offset-y", "nan", nullptr);
+    if (program.saveAppearance().wasOk()) return juce::Result::fail("Non-finite editor offset was saved");
+    const auto blockedProgram = fixtureRoot.getChildFile("program-blocked"); blockedProgram.replaceWithText("blocked");
+    program.loadAppearance(blockedProgram.getChildFile("style.xml")); program.findNode("editor.heading").setProperty("offset-y", 9, nullptr);
+    if (program.resetAppearance().wasOk() || editorHeading->getY() != originalHeading.getY() + 9) return juce::Result::fail("Failed reset lost live editor appearance");
+    programFile.replaceWithText(savedProgramDefaults); program.loadAppearance(programFile);
+    // Appearance changes must never invoke audio commands or library persistence.
+    if (board->audio.main.isOpen() || board->saveGeneration.load() != 0) return juce::Result::fail("Appearance editing changed audio or library data");
+    board->setView(1);
+    const auto appearanceFile = fixtureRoot.getChildFile("appearance.xml");
+    auto& appearance = *board->audioSettingsPanel;
+    appearance.layoutFile = appearanceFile;
+    auto root = appearance.state.getGuiTree().getChildWithName("View");
+    root.setProperty("background-color", "ff28384b", nullptr);
+    auto primary = appearance.state.getGuiTree().getChildWithName("Styles").getChild(0).getChildWithName("Classes").getChildWithName("primary");
+    primary.setProperty("button-color", "ff334455", nullptr);
+    auto heading = root.getChild(0).getChildWithProperty("id", "outputHeading");
+    heading.setProperty("font-size", 18.0f, nullptr);
+    board->saveAppearanceButton.onClick();
+    if (!appearanceFile.existsAsFile() || board->statusIsError)
+        return juce::Result::fail("Save appearance action did not persist the layout");
+    auto reopened = std::make_unique<MainComponent>(true);
+    auto& restored = *reopened->audioSettingsPanel;
+    restored.layoutFile = appearanceFile;
+    if (restored.loadAppearance().failed()
+        || restored.state.getGuiTree().getChildWithName("View")["background-color"].toString() != "ff28384b"
+        || std::abs(reopened->outputLabel.getFont().getHeight() - 18.0f) > 0.01f
+        || reopened->applyButton.findColour(juce::TextButton::buttonColourId) != juce::Colour(0xff334455))
+        return juce::Result::fail("Saved appearance did not survive reopening");
+    reopened->resetAppearanceButton.onClick();
+    if (reopened->statusIsError || reopened->applyButton.findColour(juce::TextButton::buttonColourId) != palette::accent
+        || std::abs(reopened->outputLabel.getFont().getHeight() - 15.0f) > 0.01f
+        || std::abs(reopened->microphoneGainLabel.getFont().getHeight() - 13.0f) > 0.01f
+        || restored.state.getGuiTree().getChildWithName("View")["background-color"].toString() != "ff121c29"
+        || appearance.loadAppearance().failed()
+        || appearance.state.getGuiTree().getChildWithName("View")["background-color"].toString() != "ff121c29")
+        return juce::Result::fail("Reset appearance did not restore and persist the original style");
+    const auto savedDefault = appearanceFile.loadFileAsString();
+    auto incomplete = restored.state.getGuiTree().createCopy();
+    std::function<bool(juce::ValueTree)> removeOutput = [&](juce::ValueTree node)
+    {
+        for (auto child : node)
+        {
+            if (child["id"].toString() == "outputDevice") { node.removeChild(child, nullptr); return true; }
+            if (removeOutput(child)) return true;
+        }
+        return false;
+    };
+    if (!removeOutput(incomplete)) return juce::Result::fail("Invalid-layout fixture missing its target");
+    restored.activateLayout(incomplete);
+    if (restored.saveAppearance().wasOk() || appearanceFile.loadFileAsString() != savedDefault)
+        return juce::Result::fail("An incomplete appearance overwrote the saved layout");
+    if (!appearanceFile.replaceWithText("<broken>")) return juce::Result::fail("Cannot write invalid appearance fixture");
+    if (restored.loadAppearance().wasOk()
+        || restored.state.getGuiTree().getChildWithName("View")["background-color"].toString() != "ff121c29"
+        || appearanceFile.loadFileAsString() != "<broken>")
+        return juce::Result::fail("Malformed appearance did not fall back without overwriting the file");
+    appearanceFile.replaceWithText(incomplete.toXmlString());
+    if (restored.loadAppearance().wasOk()) return juce::Result::fail("Incomplete appearance was accepted at startup");
+    auto hiddenControlLayout = juce::ValueTree::fromXml(savedDefault);
+    auto firstSection = hiddenControlLayout.getChildWithName("View").getChild(0);
+    auto output = firstSection.getChildWithProperty("id", "outputDevice");
+    firstSection.removeChild(output, nullptr);
+    juce::ValueTree leaf("Label");
+    leaf.appendChild(output, nullptr);
+    firstSection.appendChild(leaf, nullptr);
+    appearanceFile.replaceWithText(hiddenControlLayout.toXmlString());
+    if (restored.loadAppearance().wasOk()) return juce::Result::fail("A control hidden under a non-container factory was accepted");
+    const auto beforeOversize = appearanceFile.loadFileAsString();
+    restored.state.getGuiTree().setProperty("notes", juce::String::repeatedString("x", 512 * 1024), nullptr);
+    if (restored.saveAppearance().wasOk() || appearanceFile.loadFileAsString() != beforeOversize)
+        return juce::Result::fail("An oversized appearance was saved although it cannot be loaded");
+    restored.state.getGuiTree().removeProperty("notes", nullptr);
+    const auto blocked = fixtureRoot.getChildFile("blocked");
+    blocked.replaceWithText("A file, not a directory");
+    restored.layoutFile = blocked.getChildFile("appearance.xml");
+    if (restored.saveAppearance().wasOk()) return juce::Result::fail("Failed appearance write was reported as saved");
+    board->setView(0);
+    if (board->editAppearanceButton.isVisible() || board->saveAppearanceButton.isVisible() || board->resetAppearanceButton.isVisible())
+        return juce::Result::fail("Appearance toolbar leaked onto another page");
+#endif
+#endif
+    return juce::Result::ok();
+}
+
 juce::Result runPadOrderingUiTests()
 {
     auto board = std::make_unique<MainComponent>(true);
@@ -588,7 +831,7 @@ juce::Result runPadOrderingUiTests()
     board->sortBy.setSelectedId(2, juce::sendNotificationSync);
     if (board->tiles[0]->index != 29 || board->tiles[0]->displayNumber != 1
         || board->tiles[0]->getTitle() != "Pad 1: Sound 1"
-        || board->padHeading.getText() != "SUONO #30"
+        || board->padHeading.getText() != "Suono #30"
         || !board->keyboard.getDescription().startsWith("Associato al pad 30: Sound 30."))
         return juce::Result::fail("Name sort did not renumber tiles, details or keyboard accessibility");
     board->page = 1; board->rebuildTiles();
@@ -596,7 +839,7 @@ juce::Result runPadOrderingUiTests()
         return juce::Result::fail("Pad numbers restarted on the second page");
     board->sortDirection.onClick();
     if (board->page != 0 || board->tiles[0]->index != 0 || board->tiles[0]->displayNumber != 1
-        || board->padHeading.getText() != "SUONO #1" || board->keyboard.padNumber(0) != 1
+        || board->padHeading.getText() != "Suono #1" || board->keyboard.padNumber(0) != 1
         || !board->keyboard.getDescription().startsWith("Associato al pad 1: Sound 30."))
         return juce::Result::fail("Descending sort did not update the selected pad number");
     board->search.setText("#25", false); board->rebuildTiles();
@@ -609,7 +852,7 @@ juce::Result runPadOrderingUiTests()
     board->favoritesOnly.setToggleState(false, juce::dontSendNotification);
     profile.pads[0].name = "A first"; board->rebuildTiles();
     if (board->tiles[0]->index != 0 || board->tiles[0]->displayNumber != 1
-        || board->padHeading.getText() != "SUONO #1"
+        || board->padHeading.getText() != "Suono #1"
         || profile.pads[0].id != "order-0" || profile.pads[0].key != "003B:0")
         return juce::Result::fail("Renaming did not update numbering or changed the pad binding");
     profile.pads[29].useGlobalMode = false; profile.pads[29].settings.mode = PlayMode::holdLoop;

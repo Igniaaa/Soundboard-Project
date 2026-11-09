@@ -1,4 +1,9 @@
 #include "MainComponent.h"
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+#include "AudioSettingsPanel.h"
+#include "ProgramAppearance.h"
+#include "MainScreenPanel.h"
+#endif
 #include <limits>
 
 namespace dualdeck
@@ -32,55 +37,97 @@ juce::String keyLabel(const juce::String& code)
     return code;
 }
 }
-DeckLookAndFeel::DeckLookAndFeel()
+DeckLookAndFeel::DeckLookAndFeel() { applyTheme(UiTheme{}); }
+void DeckLookAndFeel::applyTheme(const UiTheme& value)
 {
-    setColour(juce::ResizableWindow::backgroundColourId, palette::background);
-    setColour(juce::TextButton::buttonColourId, palette::tile);
-    setColour(juce::TextButton::buttonOnColourId, palette::accent.withAlpha(0.18f));
-    setColour(juce::TextButton::textColourOffId, palette::text);
-    setColour(juce::TextButton::textColourOnId, palette::accent);
-    setColour(juce::Label::textColourId, palette::muted);
-    setColour(juce::ComboBox::backgroundColourId, palette::tile);
-    setColour(juce::ComboBox::outlineColourId, palette::line);
-    setColour(juce::ComboBox::textColourId, palette::text);
-    setColour(juce::PopupMenu::backgroundColourId, palette::panel);
-    setColour(juce::PopupMenu::textColourId, palette::text);
-    setColour(juce::PopupMenu::highlightedBackgroundColourId, palette::line);
-    setColour(juce::TextEditor::backgroundColourId, palette::tile);
-    setColour(juce::TextEditor::textColourId, palette::text);
-    setColour(juce::TextEditor::outlineColourId, palette::line);
-    setColour(juce::TextEditor::focusedOutlineColourId, palette::accent);
-    setColour(juce::Slider::thumbColourId, palette::accent);
-    setColour(juce::Slider::trackColourId, palette::accent);
-    setColour(juce::Slider::backgroundColourId, palette::line);
-    setColour(juce::Slider::textBoxTextColourId, palette::text);
+    theme = value;
+    for (std::size_t i = 0; i < theme.colours.size(); ++i) setColour(uiColours::background + static_cast<int>(i), theme.colours[i]);
+    setColour(juce::ResizableWindow::backgroundColourId, theme.colours[0]);
+    setColour(juce::TextButton::buttonColourId, theme.colours[2]);
+    setColour(juce::TextButton::buttonOnColourId, theme.colours[6].withAlpha(0.18f));
+    setColour(juce::TextButton::textColourOffId, theme.colours[4]);
+    setColour(juce::TextButton::textColourOnId, theme.colours[6]);
+    setColour(juce::Label::textColourId, theme.colours[5]);
+    setColour(juce::ComboBox::backgroundColourId, theme.colours[2]);
+    setColour(juce::ComboBox::outlineColourId, theme.colours[3]);
+    setColour(juce::ComboBox::textColourId, theme.colours[4]);
+    setColour(juce::PopupMenu::backgroundColourId, theme.colours[1]);
+    setColour(juce::PopupMenu::textColourId, theme.colours[4]);
+    setColour(juce::PopupMenu::highlightedBackgroundColourId, theme.colours[3]);
+    setColour(juce::TextEditor::backgroundColourId, theme.colours[2]);
+    setColour(juce::TextEditor::textColourId, theme.colours[4]);
+    setColour(juce::TextEditor::outlineColourId, theme.colours[3]);
+    setColour(juce::TextEditor::focusedOutlineColourId, theme.colours[6]);
+    setColour(juce::Slider::thumbColourId, theme.colours[6]);
+    setColour(juce::Slider::trackColourId, theme.colours[6]);
+    setColour(juce::Slider::backgroundColourId, theme.colours[3]);
+    setColour(juce::Slider::textBoxTextColourId, theme.colours[4]);
     setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    setColour(juce::ToggleButton::textColourId, palette::text);
-    setColour(juce::ToggleButton::tickColourId, palette::accent);
+    setColour(juce::ToggleButton::textColourId, theme.colours[4]);
+    setColour(juce::ToggleButton::tickColourId, theme.colours[6]);
+    setColour(juce::PopupMenu::highlightedTextColourId, theme.colours[6]);
+}
+juce::Font DeckLookAndFeel::getMenuBarFont(juce::MenuBarComponent&, int, const juce::String&)
+{
+    return juce::Font(juce::FontOptions(juce::jlimit(12.0f, 16.0f, 13.0f * theme.fontScale)));
+}
+int DeckLookAndFeel::getMenuBarItemWidth(juce::MenuBarComponent& bar, int index, const juce::String& text)
+{
+    return juce::GlyphArrangement::getStringWidthInt(getMenuBarFont(bar, index, text), text) + 18;
+}
+void DeckLookAndFeel::drawMenuBarBackground(juce::Graphics& g, int width, int height, bool, juce::MenuBarComponent& bar)
+{
+    g.fillAll(uiColour(bar, uiColours::panel));
+    g.setColour(uiColour(bar, uiColours::line).withAlpha(0.65f));
+    g.fillRect(0, height - 1, width, 1);
+}
+void DeckLookAndFeel::drawMenuBarItem(juce::Graphics& g, int width, int height, int index, const juce::String& text,
+    bool over, bool open, bool, juce::MenuBarComponent& bar)
+{
+    if (bar.isEnabled() && (over || open))
+    {
+        g.setColour(uiColour(bar, uiColours::accent).withAlpha(open ? 0.13f : 0.07f));
+        g.fillRoundedRectangle(juce::Rectangle<float>(0, 0, static_cast<float>(width), static_cast<float>(height)).reduced(2.0f, 3.0f), 4.0f);
+    }
+    auto colour = open ? uiColour(bar, uiColours::accent) : over ? uiColour(bar, uiColours::text) : uiColour(bar, uiColours::muted).brighter(0.2f);
+    g.setColour(colour.withMultipliedAlpha(bar.isEnabled() ? 1.0f : 0.5f));
+    g.setFont(getMenuBarFont(bar, index, text));
+    g.drawFittedText(text, 0, 0, width, height - 1, juce::Justification::centred, 1);
 }
 void DeckLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& colour, bool over, bool down)
 {
     auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
     g.setColour(colour.brighter(down ? 0.15f : over ? 0.08f : 0.0f));
-    g.fillRoundedRectangle(bounds, 7.0f);
-    g.setColour(button.getToggleState() ? palette::accent.withAlpha(0.45f) : palette::line);
-    g.drawRoundedRectangle(bounds, 7.0f, 1.0f);
+    g.fillRoundedRectangle(bounds, uiRadius(button, 7.0f));
+    g.setColour(button.getToggleState() ? uiColour(button, uiColours::accent).withAlpha(0.45f) : uiColour(button, uiColours::line));
+    g.drawRoundedRectangle(bounds, uiRadius(button, 7.0f), 1.0f);
+}
+void DeckLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& button, bool over, bool down)
+{
+    const auto size = uiFontHeight(button, juce::jmin(15.0f, static_cast<float>(button.getHeight()) * 0.75f)) * uiFontScale(button);
+    const auto tick = size * 1.1f;
+    drawTickBox(g, button, 4.0f, (static_cast<float>(button.getHeight()) - tick) * 0.5f, tick, tick,
+        button.getToggleState(), button.isEnabled(), over, down);
+    g.setColour(button.findColour(juce::ToggleButton::textColourId));
+    g.setFont(juce::Font(juce::FontOptions(size)));
+    if (!button.isEnabled()) g.setOpacity(0.5f);
+    g.drawFittedText(button.getButtonText(), button.getLocalBounds().withTrimmedLeft(juce::roundToInt(tick) + 10).withTrimmedRight(2), juce::Justification::centredLeft, 10);
 }
 void PadTile::paint(juce::Graphics& g)
 {
     auto box = getLocalBounds().toFloat().reduced(1);
-    g.setColour(held ? palette::accent.withAlpha(0.22f) : isMouseOver() ? palette::tile.brighter(0.06f) : palette::tile);
-    g.fillRoundedRectangle(box, 10);
-    g.setColour(selected ? palette::accent : palette::line);
-    g.drawRoundedRectangle(box, 10, selected ? 1.7f : 1.0f);
-    g.setColour(missing ? palette::warning : palette::accent);
+    g.setColour(held ? uiColour(*this, uiColours::accent).withAlpha(0.22f) : isMouseOver() ? uiColour(*this, uiColours::tile).brighter(0.06f) : uiColour(*this, uiColours::tile));
+    g.fillRoundedRectangle(box, uiRadius(*this, 10));
+    g.setColour(selected ? uiColour(*this, uiColours::accent) : uiColour(*this, uiColours::line));
+    g.drawRoundedRectangle(box, uiRadius(*this, 10), selected ? 1.7f : 1.0f);
+    g.setColour(missing ? uiColour(*this, uiColours::warning) : uiColour(*this, uiColours::accent));
     g.fillRoundedRectangle(juce::Rectangle<float>(12, 13, 3, 19), 1.5f);
-    g.setFont(font(12, true));
+    g.setFont(uiFont(*this, 12, true));
     g.drawText("#" + juce::String(displayNumber) + (binding.isEmpty() ? "" : "  /  " + binding), 23, 12, getWidth() - 42, 22, juce::Justification::centredLeft);
-    if (favorite) { g.setColour(palette::warning); g.fillEllipse(static_cast<float>(getWidth() - 20), 20, 5, 5); }
-    g.setFont(font(14, true)); g.setColour(palette::text);
+    if (favorite) { g.setColour(uiColour(*this, uiColours::warning)); g.fillEllipse(static_cast<float>(getWidth() - 20), 20, 5, 5); }
+    g.setFont(uiFont(*this, 14, true)); g.setColour(uiColour(*this, uiColours::text));
     g.drawFittedText(title, 13, 43, getWidth() - 26, 38, juce::Justification::topLeft, 2);
-    g.setFont(font(11)); g.setColour(missing ? palette::warning : palette::muted);
+    g.setFont(uiFont(*this, 11)); g.setColour(missing ? uiColour(*this, uiColours::warning) : uiColour(*this, uiColours::muted));
     g.drawText(subtitle, 13, getHeight() - 25, getWidth() - 26, 17, juce::Justification::centredLeft, true);
 }
 void PadTile::mouseDown(const juce::MouseEvent& event)
@@ -279,17 +326,17 @@ void KeyboardView::paint(juce::Graphics& g)
             auto box = juce::Rectangle<float>(x, row * rowHeight, unit * key.width, rowHeight * key.height).reduced(2);
             const Pad* pad = nullptr;
             if (profile) for (const auto& p : profile->pads) if (p.key == key.code) { pad = &p; break; }
-            g.setColour(held == key.code ? palette::accent.withAlpha(0.3f) : pad ? palette::tile : palette::panel);
-            g.fillRoundedRectangle(box, 6);
-            g.setColour(hasKeyboardFocus(false) && key.code == focusedCode() ? palette::blue
-                : key.code == selectedKey ? palette::accent : palette::line);
-            g.drawRoundedRectangle(box, 6, 1);
-            g.setFont(font(12, true)); g.setColour(pad ? palette::accent : palette::muted);
+            g.setColour(held == key.code ? uiColour(*this, uiColours::accent).withAlpha(0.3f) : pad ? uiColour(*this, uiColours::tile) : uiColour(*this, uiColours::panel));
+            g.fillRoundedRectangle(box, uiRadius(*this, 6));
+            g.setColour(hasKeyboardFocus(false) && key.code == focusedCode() ? uiColour(*this, uiColours::blue)
+                : key.code == selectedKey ? uiColour(*this, uiColours::accent) : uiColour(*this, uiColours::line));
+            g.drawRoundedRectangle(box, uiRadius(*this, 6), 1);
+            g.setFont(uiFont(*this, 12, true)); g.setColour(pad ? uiColour(*this, uiColours::accent) : uiColour(*this, uiColours::muted));
             g.drawFittedText(key.label.startsWith("Num ") ? key.label.substring(4) : key.label,
                 box.reduced(4).removeFromTop(20).toNearestInt(), juce::Justification::centredLeft, 1);
             if (pad)
             {
-                g.setFont(font(10)); g.setColour(palette::text);
+                g.setFont(uiFont(*this, 10)); g.setColour(uiColour(*this, uiColours::text));
                 g.drawFittedText("#" + juce::String(padNumber(static_cast<int>(pad - profile->pads.data()))) + " " + pad->name, box.reduced(6).withTrimmedTop(25).toNearestInt(), juce::Justification::topLeft, 2);
             }
             hitboxes.push_back({box, key.code}); x += unit * key.width;
@@ -340,40 +387,41 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
         }
     }
     library.ensureProfile();
-    label(title, "La tua soundboard", 27); title.setColour(juce::Label::textColourId, palette::text);
-    label(subTitle, "Suoni, tasti e controllo. Tutto al suo posto.", 13);
-    label(profileLabel, "PROFILO", 11); label(modeLabel, utf8("MODALITÀ GENERALE"), 11);
+    label(title, "Soundboard", 27); title.setColour(juce::Label::textColourId, palette::text);
+    title.setFont(font(27, true));
+    label(profileLabel, "Profilo", 13); label(modeLabel, "Riproduzione", 13);
     label(pageLabel, ""); label(statusLabel, "Pronto");
-    label(padHeading, "DETTAGLI SUONO", 11); label(padFile, "Seleziona un pad");
+    label(padHeading, "Dettagli suono", 14); label(padFile, "Seleziona un suono");
     label(keyInfo, "Nessun tasto assegnato", 12);
     label(volumeLabel, "Volume del suono"); label(speedLabel, utf8("Velocità"));
     label(fadeLabel, "Dissolvenza  /  entrata e uscita (s)");
     label(padModeLabel, utf8("Modalità del suono"));
-    label(outputLabel, "INVIO AL MICROFONO VIRTUALE / USCITA PRINCIPALE", 12); label(monitorLabel, "CUFFIE / MONITOR", 12);
-    label(outputDetails, ""); label(monitorDetails, "");
-    label(microphoneLabel, "MICROFONO FISICO / INGRESSO", 12);
+    label(outputLabel, "Uscita principale", 15); label(monitorLabel, "Cuffie", 15);
+    label(microphoneLabel, "Microfono", 15);
     label(microphoneGainLabel, "Livello del microfono", 13);
-    label(microphoneHelp, "Il microfono viene unito ai suoni sull'uscita principale.\n"
-         "L'ascolto in cuffia e facoltativo: evita di selezionare diffusori per non creare ritorno audio.", 13);
-    microphoneHelp.setJustificationType(juce::Justification::topLeft);
-    label(outputMasterLabel, "MASTER / MICROFONO", 11); label(monitorMasterLabel, "MASTER / CUFFIE", 11);
-    label(audioHelp, utf8("Per Discord: scegli CABLE Input come uscita e CABLE Output come microfono in Discord.\n"
-          "Se attivi il microfono fisico, anche la voce passa da DualDeck al cavo virtuale.\n\n"
-          "Le due uscite hanno volumi indipendenti. Se scegli lo stesso dispositivo, viene riprodotta una sola copia.\n"
-          "Latenza e sincronizzazione fra dispositivi diversi dipendono anche dai driver."), 14);
-    audioHelp.setJustificationType(juce::Justification::topLeft);
+    microphoneToggle.setTooltip("Unisce la voce ai suoni nell'uscita principale.");
+    microphoneMonitorToggle.setTooltip("Usa le cuffie per evitare ritorni audio dal microfono.");
+    label(outputMasterLabel, "Volume uscita", 13); label(monitorMasterLabel, "Volume cuffie", 13);
     label(inputStatus, "", 11); inputStatus.setJustificationType(juce::Justification::topLeft);
     label(folderSummary, "", 11); folderSummary.setJustificationType(juce::Justification::topLeft);
     label(padFolderHeading, "", 12);
-    label(keyboardHeading, "LA TUA TASTIERA DEDICATA", 12);
+    label(keyboardHeading, "Dispositivo", 15);
     label(keyboardStatus, "Scegli una tastiera oppure usa F12.");
-    label(lastKey, "Nessun tasto ricevuto dalla tastiera dedicata.");
-    label(keyboardHelp, utf8("1. Premi Riconosci con F12, poi premi e rilascia F12 sulla tastiera da dedicare ai suoni.\n\n"
-        "2. Rilascia tutti i tasti e attiva la tastiera selezionata. I suoi comandi funzionano anche con DualDeck in secondo piano.\n\n"
-        "3. Seleziona un pad e usa Associa un tasto. I tasti associati arrivano solo dalla tastiera dedicata; i controlli dell'interfaccia restano disponibili.\n\n"
-        "Quando è attiva, i tasti della tastiera dedicata controllano solo DualDeck e vengono bloccati nelle altre applicazioni. La tastiera principale rimane libera.\n\n"
-        "Disattiva l'interruttore per ripristinare i tasti. La chiusura dell'app o un collegamento interrotto rilasciano il blocco. Dopo un cambio dei dispositivi, verifica la selezione e riattiva."), 14);
+    label(lastKey, "");
+    label(keyboardHelp, utf8("Quando è attiva, questa tastiera controlla DualDeck e non scrive nelle altre app."), 13);
     keyboardHelp.setJustificationType(juce::Justification::topLeft);
+    identifyKeyboard.setTooltip("Premi e rilascia F12 sulla tastiera da dedicare ai suoni.");
+    captureKeyboard.setTooltip("Rilascia tutti i tasti prima di attivare. Disattiva per tornare a usare la tastiera normalmente.");
+    for (auto* heading : {&profileLabel, &modeLabel, &padHeading, &outputLabel, &monitorLabel, &microphoneLabel, &keyboardHeading})
+    {
+        heading->setFont(font(heading->getFont().getHeight(), true));
+        heading->setColour(juce::Label::textColourId, palette::text);
+    }
+    for (auto* primary : {&importButton, &applyButton})
+    {
+        primary->setColour(juce::TextButton::buttonColourId, palette::accent);
+        primary->setColour(juce::TextButton::textColourOffId, palette::background);
+    }
     for (juce::Component* component : std::initializer_list<juce::Component*>{&profiles,&globalMode,&outputDevice,&monitorDevice,&inputDevice,&padMode,&search,&padName,
         &boardTab,&audioTab,&importButton,&newProfile,&renameProfile,&stopButton,&djButton,&previous,&next,&tilesButton,&keyboardButton,
         &bindButton,&unbindButton,&applyButton,&scanButton,&favoriteButton,&favoritesOnly,&monitorToggle,&keyboardViewport,
@@ -549,7 +597,7 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
     rawKeyboard.onKey = [this](const juce::String& key, bool down)
     {
         if (hasKeyboardFocus(true) && textEditorFocused() && !binding) { if (!down) handleKey(key, false); return; }
-        if (down) lastKey.setText("Ultimo tasto: " + keyLabel(key) + "  /  " + key, juce::dontSendNotification);
+        if (down) lastKey.setText("Ultimo tasto: " + keyLabel(key), juce::dontSendNotification);
         handleKey(key, down);
     };
     rawKeyboard.onCaptureStateChanged = [this]
@@ -605,6 +653,44 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
     microphoneToggle.setToggleState(library.microphoneEnabled, juce::dontSendNotification);
     microphoneMonitorToggle.setToggleState(library.microphoneMonitor, juce::dontSendNotification);
     updateAudioControls();
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    audioSettingsPanel = std::make_unique<AudioSettingsPanel>(std::initializer_list<AudioSettingsPanel::Control>{
+        {"outputHeading", outputLabel}, {"outputDevice", outputDevice},
+        {"monitorHeading", monitorLabel}, {"monitorEnabled", monitorToggle}, {"monitorDevice", monitorDevice},
+        {"microphoneHeading", microphoneLabel}, {"microphoneEnabled", microphoneToggle}, {"inputDevice", inputDevice},
+        {"microphoneMonitor", microphoneMonitorToggle}, {"microphoneGainHeading", microphoneGainLabel},
+        {"microphoneGain", microphoneVolume}, {"applyAudio", applyButton}, {"refreshDevices", scanButton}},
+        smokeTest ? juce::File() : projectRoot.getChildFile("data/foleys-audio-ui.xml"));
+    addAndMakeVisible(*audioSettingsPanel);
+#endif
+#if defined(DUALDECK_FOLEYS_DESIGNER)
+    editAppearanceButton.setComponentID("editAppearance");
+    saveAppearanceButton.setComponentID("saveAppearance");
+    resetAppearanceButton.setComponentID("resetAppearance");
+    for (auto* action : {&editAppearanceButton, &saveAppearanceButton, &resetAppearanceButton}) addAndMakeVisible(action);
+    editAppearanceButton.onClick = [this]
+    {
+        if (audioSettingsPanel->isDesignerVisible())
+        {
+            audioSettingsPanel->hideDesigner();
+            editAppearanceButton.setButtonText("Modifica aspetto");
+        }
+        else showAudioUiDesigner();
+    };
+    saveAppearanceButton.onClick = [this]
+    {
+        const auto result = audioSettingsPanel->saveAppearance();
+        setStatus(result.wasOk() ? "Aspetto salvato." : result.getErrorMessage(), result.failed());
+    };
+    resetAppearanceButton.onClick = [this]
+    {
+        const auto result = audioSettingsPanel->resetAppearance();
+        setStatus(result.wasOk() ? "Aspetto iniziale ripristinato." : result.getErrorMessage(), result.failed());
+    };
+    editAppearanceButton.setTooltip("Apri il designer visuale per modificare la pagina audio.");
+    saveAppearanceButton.setTooltip("Conserva l'aspetto e ricaricalo ai prossimi avvii.");
+    resetAppearanceButton.setTooltip("Ripristina e salva l'aspetto iniziale della pagina audio.");
+#endif
     refreshDevices(); refreshKeyboards(); refresh(); setView(0); setSize(1380, 880);
     if (!smokeTest)
     {
@@ -614,7 +700,12 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
     }
     if (!smokeTest) applyAudio();
     if (loaded.failed()) setStatus(loaded.getErrorMessage(), true);
-    else if (smokeTest || audio.main.isOpen()) setStatus(juce::String(library.totalPads()) + " suoni in libreria. Tasti locali attivi con DualDeck in primo piano.");
+    else if (smokeTest || audio.main.isOpen()) setStatus("Pronto");
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    if (!statusIsError && audioSettingsPanel->getAppearanceLoadResult().failed())
+        setStatus(audioSettingsPanel->getAppearanceLoadResult().getErrorMessage(), true);
+#endif
+    initialiseProgramAppearance();
     startTimerHz(20);
     if (!smokeTest && !library.current().folders.empty()) scanProfileFolders(library.current().id);
 #if defined(DUALDECK_UI_EDITOR)
@@ -655,59 +746,76 @@ MainComponent::~MainComponent()
         const auto result = library.save(libraryFile);
         if (result.failed()) juce::Logger::writeToLog("Salvataggio finale DualDeck non riuscito: " + result.getErrorMessage());
     }
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    mainScreenPanel.reset();
+    programAppearance.reset();
+    audioSettingsPanel.reset();
+#endif
     audio.stop(); removeKeyListener(this); setLookAndFeel(nullptr);
+}
+void MainComponent::showAudioUiDesigner()
+{
+#if defined(DUALDECK_FOLEYS_DESIGNER)
+    if (mainScreenPanel) mainScreenPanel->hideDesigner();
+    if (programAppearance) programAppearance->hideDesigner();
+    setView(1);
+    audioSettingsPanel->showDesigner();
+    editAppearanceButton.setButtonText("Fine modifica");
+#endif
 }
 void MainComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(palette::background);
-    g.setColour(palette::panel); g.fillRect(0, 0, 196, getHeight());
-    g.setColour(palette::line); g.drawVerticalLine(195, 0, static_cast<float>(getHeight()));
-    g.setColour(palette::accent); g.fillRoundedRectangle(22, 25, 32, 32, 8);
-    g.setColour(palette::background); g.setFont(font(19, true)); g.drawText("D", 22, 25, 32, 32, juce::Justification::centred);
-    g.setColour(palette::text); g.setFont(font(21, true)); g.drawText("DualDeck", 63, 25, 126, 25, juce::Justification::centredLeft);
-    g.setColour(palette::muted); g.setFont(font(10)); g.drawText(juce::String("JUCE / ") + DUALDECK_VERSION, 64, 50, 124, 17, juce::Justification::centredLeft);
-    g.setFont(font(11)); g.drawText("IL TUO SPAZIO", 22, 103, 160, 20, juce::Justification::centredLeft);
-    g.setColour(palette::line); g.drawHorizontalLine(getHeight() - 76, 196, static_cast<float>(getWidth()));
+    g.fillAll(uiColour(*this, uiColours::background));
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    if (mainScreenPanel) return;
+#endif
+    g.setColour(uiColour(*this, uiColours::panel)); g.fillRect(0, 0, 196, getHeight());
+    g.setColour(uiColour(*this, uiColours::line)); g.drawVerticalLine(195, 0, static_cast<float>(getHeight()));
+    g.setColour(uiColour(*this, uiColours::accent)); g.fillRoundedRectangle(22, 25, 32, 32, uiRadius(*this, 8));
+    g.setColour(uiColour(*this, uiColours::background)); g.setFont(uiFont(*this, 19, true)); g.drawText("D", 22, 25, 32, 32, juce::Justification::centred);
+    g.setColour(uiColour(*this, uiColours::text)); g.setFont(uiFont(*this, 21, true)); g.drawText("DualDeck", 63, 25, 126, 25, juce::Justification::centredLeft);
+    g.setColour(uiColour(*this, uiColours::line)); g.drawHorizontalLine(getHeight() - 76, 196, static_cast<float>(getWidth()));
     if (view == 0)
     {
-        g.setColour(palette::panel); g.fillRoundedRectangle(inspector.toFloat(), 12);
+        g.setColour(uiColour(*this, uiColours::panel)); g.fillRoundedRectangle(inspector.toFloat(), uiRadius(*this, 12));
         if (filtered.empty())
         {
-            g.setColour(palette::muted); g.setFont(font(19));
+            g.setColour(uiColour(*this, uiColours::muted)); g.setFont(uiFont(*this, 19));
             g.drawFittedText(library.current().pads.empty() ? "Nessun suono qui.\nTrascina una cartella o usa Collega cartella."
                 : "Nessun suono corrisponde ai filtri.\nControlla cartella, ricerca e preferiti.", centre.withTrimmedTop(160), juce::Justification::centred, 3);
         }
     }
     else
     {
-        g.setColour(palette::panel); g.fillRoundedRectangle(centre.toFloat(), 12);
+        g.setColour(uiColour(*this, uiColours::panel)); g.fillRoundedRectangle(centre.toFloat(), uiRadius(*this, 12));
     }
     const float meter = audio.main.core.meter();
     auto meterBox = juce::Rectangle<float>(static_cast<float>(getWidth() - 212), static_cast<float>(getHeight() - 29), 184, 5);
-    g.setColour(palette::line); g.fillRoundedRectangle(meterBox, 2.5f);
-    g.setColour(meter > 0.9f ? palette::warning : palette::accent); g.fillRoundedRectangle(meterBox.withWidth(meterBox.getWidth() * juce::jlimit(0.0f, 1.0f, meter)), 2.5f);
-    g.setFont(font(11)); g.setColour(palette::muted);
-    g.drawText(juce::String(audio.main.core.activeVoices()) + "/32 voci  |  "
-        + juce::String(static_cast<int>(audio.cacheSize() / (1024 * 1024))) + " MiB  |  "
-        + juce::String(audio.main.core.lastOnsetLatencyMs(), 0) + " ms", getWidth() - 265,
-        getHeight() - 55, 245, 20, juce::Justification::centredRight);
+    g.setColour(uiColour(*this, uiColours::line)); g.fillRoundedRectangle(meterBox, 2.5f);
+    g.setColour(meter > 0.9f ? uiColour(*this, uiColours::warning) : uiColour(*this, uiColours::accent)); g.fillRoundedRectangle(meterBox.withWidth(meterBox.getWidth() * juce::jlimit(0.0f, 1.0f, meter)), 2.5f);
 }
 void MainComponent::paintOverChildren(juce::Graphics& g)
 {
     if (editorViewport.isVisible())
     {
-        g.setColour(juce::Colour(0xff63dfc4));
-        g.drawRoundedRectangle(editorViewport.getBounds().toFloat().reduced(1.0f), 12.0f, 2.0f);
+        g.setColour(uiColour(*this, uiColours::accent));
+        g.drawRoundedRectangle(editorViewport.getBounds().toFloat().reduced(1.0f), uiRadius(*this, 12.0f), 2.0f);
     }
 }
 int MainComponent::preferredHeight(int width) const
 {
-    if (view == 1) return 1020;
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    if (view != 0 || keyboardMode) return 800;
+    const int columns = juce::jlimit(1, 6, (width - 546 + 9) / 129);
+    const int rows = (24 + columns - 1) / columns;
+    return juce::jmax(800, 26 + (width < 1200 ? 136 : 78) + 44 + 38 + 68 + rows * 100 + (rows - 1) * 9 + 76);
+#else
     if (view != 0 || keyboardMode) return 880;
     const int boardWidth = width - 546;
     const int columns = juce::jlimit(2, 6, (boardWidth + 9) / 129);
     const int rows = (24 + columns - 1) / columns;
     return juce::jmax(880, 346 + (width < 1200 ? 54 : 0) + rows * 100 + (rows - 1) * 9 + 100);
+#endif
 }
 void MainComponent::updateEditorViewportBounds()
 {
@@ -721,14 +829,27 @@ void MainComponent::updateEditorViewportBounds()
 void MainComponent::parentSizeChanged() { updateEditorViewportBounds(); }
 void MainComponent::resized()
 {
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    if (mainScreenPanel)
+    {
+        mainScreenPanel->setBounds(getLocalBounds()); mainScreenPanel->resized();
+        updateEditorViewportBounds();
+        if (editorViewport.isVisible()) editorViewport.toFront(false);
+        return;
+    }
+#endif
     const int rightWidth = 282, gap = 22;
     const int compactShift = getWidth() < 1200 ? 54 : 0;
     const int boardTopShift = view == 0 ? 72 : 0;
     const int inspectorDetailShift = view == 0 ? 18 : 0;
     auto area = getLocalBounds().withTrimmedLeft(218).withTrimmedRight(24);
     title.setBounds(area.getX(), 25, area.getWidth() - 230, 36);
-    subTitle.setBounds(area.getX(), 64, area.getWidth() - 230, 24);
     importButton.setBounds(getWidth() - 210, 32, 186, 40);
+#if defined(DUALDECK_FOLEYS_DESIGNER)
+    editAppearanceButton.setBounds(area.getX(), 72, 168, 30);
+    saveAppearanceButton.setBounds(area.getX() + 176, 72, 136, 30);
+    resetAppearanceButton.setBounds(area.getX() + 320, 72, 120, 30);
+#endif
     boardTab.setBounds(16, 139, 164, 42); audioTab.setBounds(16, 190, 164, 42);
     keyboardTab.setBounds(16, 241, 164, 42);
     outputMasterLabel.setBounds(20, 307, 160, 22); outputVolume.setBounds(12, 335, 174, 30);
@@ -781,20 +902,21 @@ void MainComponent::resized()
     if (view == 1)
     {
         centre = {218, 112, getWidth() - 242, getHeight() - 212};
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+        if (audioSettingsPanel) audioSettingsPanel->setBounds(centre);
+#else
         const int ax = centre.getX() + 28, aw = juce::jmin(650, centre.getWidth() - 56);
-        outputLabel.setBounds(ax, 140, aw, 24); outputDevice.setBounds(ax, 177, aw, 36);
-        outputDetails.setBounds(ax, 219, aw, 24);
-        monitorLabel.setBounds(ax, 260, aw, 24); monitorToggle.setBounds(ax, 290, aw, 28);
-        monitorDevice.setBounds(ax, 327, aw, 36); monitorDetails.setBounds(ax, 369, aw, 24);
-        applyButton.setBounds(ax, 408, 180, 38); scanButton.setBounds(ax + 192, 408, 210, 38);
-        microphoneLabel.setBounds(ax, 490, aw, 24);
-        microphoneToggle.setBounds(ax, 522, aw, 28);
-        inputDevice.setBounds(ax, 561, aw, 36);
-        microphoneMonitorToggle.setBounds(ax, 609, aw, 28);
-        microphoneGainLabel.setBounds(ax, 651, 190, 26);
-        microphoneVolume.setBounds(ax + 190, 650, aw - 190, 30);
-        microphoneHelp.setBounds(ax, 691, aw, 62);
-        audioHelp.setBounds(ax, 773, centre.getWidth() - 56, 110);
+        outputLabel.setBounds(ax, 140, aw, 24); outputDevice.setBounds(ax, 172, aw, 36);
+        monitorLabel.setBounds(ax, 240, aw, 24); monitorToggle.setBounds(ax, 272, aw, 28);
+        monitorDevice.setBounds(ax, 308, aw, 36);
+        microphoneLabel.setBounds(ax, 384, aw, 24);
+        microphoneToggle.setBounds(ax, 416, aw, 28);
+        inputDevice.setBounds(ax, 452, aw, 36);
+        microphoneMonitorToggle.setBounds(ax, 504, aw, 28);
+        microphoneGainLabel.setBounds(ax, 548, 190, 26);
+        microphoneVolume.setBounds(ax + 190, 548, aw - 190, 30);
+        applyButton.setBounds(ax, 618, 180, 38); scanButton.setBounds(ax + 192, 618, 210, 38);
+#endif
     }
     if (view == 2)
     {
@@ -806,7 +928,7 @@ void MainComponent::resized()
         captureKeyboard.setBounds(ax, 303, aw, 32);
         keyboardStatus.setBounds(ax, 350, aw, 48);
         lastKey.setBounds(ax, 406, aw, 26);
-        keyboardHelp.setBounds(ax, 459, aw, centre.getBottom() - 480);
+        keyboardHelp.setBounds(ax, 459, aw, 48);
     }
 #if defined(DUALDECK_UI_EDITOR)
     if (layoutEditor)
@@ -819,22 +941,32 @@ void MainComponent::resized()
 }
 void MainComponent::setView(int section)
 {
+    if (section != view) hideAppearanceEditors();
     if (section != 0)
     {
         stopEditorPreview(); editorViewport.setVisible(false); editingPadId.clear(); editingProfileId.clear();
     }
     view = section;
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    if (audioSettingsPanel) audioSettingsPanel->setVisible(view == 1);
+#endif
+#if defined(DUALDECK_FOLEYS_DESIGNER)
+    for (auto* action : {&editAppearanceButton, &saveAppearanceButton, &resetAppearanceButton}) action->setVisible(view == 1);
+    if (view != 1 && audioSettingsPanel)
+    {
+        audioSettingsPanel->hideDesigner();
+        editAppearanceButton.setButtonText("Modifica aspetto");
+    }
+#endif
     boardTab.setToggleState(view == 0, juce::dontSendNotification); audioTab.setToggleState(view == 1, juce::dontSendNotification);
     keyboardTab.setToggleState(view == 2, juce::dontSendNotification);
     tilesButton.setToggleState(!keyboardMode, juce::dontSendNotification); keyboardButton.setToggleState(keyboardMode, juce::dontSendNotification);
     for (juce::Component* c : std::initializer_list<juce::Component*>{&profileLabel,&profiles,&newProfile,&renameProfile,&deleteProfile,&sortBy,&sortDirection,&modeLabel,&globalMode,&search,&favoritesOnly,&pageLabel,&previous,&next,&tilesButton,&keyboardButton,
         &padHeading,&padName,&padFile,&replaceFile,&editorButton,&keyInfo,&bindButton,&unbindButton,&favoriteButton,&volumeOverride,&volumeLabel,&speedLabel,&fadeLabel,&padModeLabel,&padVolume,&padSpeed,&fadeIn,&fadeOut,&padMode,&globalPitchToggle,&globalPitch}) c->setVisible(view == 0);
-    for (juce::Component* c : std::initializer_list<juce::Component*>{&outputLabel,&outputDevice,&outputDetails,&monitorLabel,&monitorToggle,&monitorDevice,&monitorDetails,&applyButton,&scanButton,&audioHelp,&microphoneLabel,&microphoneToggle,&inputDevice,&microphoneMonitorToggle,&microphoneGainLabel,&microphoneVolume,&microphoneHelp}) c->setVisible(view == 1);
+    for (juce::Component* c : std::initializer_list<juce::Component*>{&outputLabel,&outputDevice,&monitorLabel,&monitorToggle,&monitorDevice,&applyButton,&scanButton,&microphoneLabel,&microphoneToggle,&inputDevice,&microphoneMonitorToggle,&microphoneGainLabel,&microphoneVolume}) c->setVisible(view == 1);
     for (juce::Component* c : std::initializer_list<juce::Component*>{&keyboardHeading,&keyboardDevice,&identifyKeyboard,&scanKeyboards,&captureKeyboard,&keyboardStatus,&lastKey,&keyboardHelp}) c->setVisible(view == 2);
-    title.setText(view == 0 ? "La tua soundboard" : view == 1 ? "Ogni suono, al posto giusto." : "Una tastiera, tutti i tuoi suoni.", juce::dontSendNotification);
-    subTitle.setText(view == 0 ? "Clic destro: azioni sul suono. Clic sinistro: riproduci." : view == 1 ? "Invio principale e ascolto in cuffia, con livelli separati." : "Scegli il dispositivo che controlla la soundboard.", juce::dontSendNotification);
+    title.setText(view == 0 ? "Soundboard" : view == 1 ? "Audio e uscite" : "Tastiera dedicata", juce::dontSendNotification);
     title.setVisible(view != 0);
-    subTitle.setVisible(view != 0);
     if (auto* viewport = findParentComponentOfClass<juce::Viewport>())
     {
         const int width = juce::jmax(900, viewport->getWidth() - 20);
@@ -855,7 +987,7 @@ void MainComponent::refresh()
     sortBy.setSelectedId(static_cast<int>(library.current().sortField) + 1, juce::dontSendNotification);
     sortDirection.setButtonText(library.current().ascending ? "Crescente" : "Decrescente");
     const auto& folders = library.current().folders;
-    folderSummary.setText(juce::String(folders.size()) + " CARTELLE COLLEGATE\n" + (folders.empty() ? "Nessuna cartella selezionata" : folders.front().getFileName()), juce::dontSendNotification);
+    folderSummary.setText(juce::String(folders.size()) + (folders.size() == 1 ? " cartella collegata" : " cartelle collegate"), juce::dontSendNotification);
     juce::StringArray paths; for (const auto& folder : folders) paths.add(folder.getFullPathName());
     folderSummary.setTooltip(paths.joinIntoString("\n"));
     updating = false; rebuildTiles();
@@ -905,7 +1037,7 @@ void MainComponent::rebuildTiles()
     const int pages = juce::jmax(1, static_cast<int>(folderPages.size())); page = juce::jlimit(0, pages - 1, page);
     const auto* currentPage = folderPages.empty() ? nullptr : &folderPages[static_cast<std::size_t>(page)];
     padFolderHeading.setText(currentPage ? currentPage->folder.getFileName() + "  /  "
-        + juce::String(currentPage->indices.size()) + " suoni in questa pagina" : "Nessun suono nei filtri selezionati", juce::dontSendNotification);
+        + juce::String(currentPage->indices.size()) + " suoni" : "", juce::dontSendNotification);
     padFolderHeading.setTooltip(currentPage ? currentPage->folder.getFullPathName() : juce::String());
     padFolderHeading.setVisible(view == 0 && !keyboardMode);
     padFolderFilter.setVisible(view == 0 && !keyboardMode);
@@ -913,7 +1045,7 @@ void MainComponent::rebuildTiles()
     previous.setVisible(view == 0 && !keyboardMode); next.setVisible(view == 0 && !keyboardMode);
     const auto missing = missingFiles;
     pageLabel.setText(juce::String(filtered.size()) + " suoni  /  " + juce::String(page + 1) + " di " + juce::String(pages) + (missing > 0 ? "  /  " + juce::String(static_cast<int>(missing)) + " mancanti" : ""), juce::dontSendNotification);
-    pageLabel.setColour(juce::Label::textColourId, missing > 0 ? palette::warning : palette::muted);
+    semanticTextColour(pageLabel, missing > 0 ? uiColours::warning : uiColours::muted);
     pageLabel.setTooltip(pageLabel.getText());
     previous.setEnabled(page > 0 && !keyboardMode); next.setEnabled(page + 1 < pages && !keyboardMode);
     for (int i = 0; i < 24; ++i)
@@ -929,11 +1061,22 @@ void MainComponent::rebuildTiles()
         tile.setTitle("Pad " + juce::String(tile.displayNumber) + ": " + pad.name);
         tile.setDescription(tile.subtitle + (tile.binding.isEmpty() ? "" : ", tasto " + tile.binding)
             + (tile.missing ? ". Usa Ricollega file audio." : ". Invio per riprodurre; menu contestuale per altre azioni."));
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+        if (mainScreenPanel) mainScreenPanel->refreshControl("padTile" + juce::String(i + 1), true);
+#endif
         tile.repaint();
     }
-    if (selectedPad()) padHeading.setText("SUONO #" + juce::String(padNumber(selection)), juce::dontSendNotification);
+    if (selectedPad()) padHeading.setText("Suono #" + juce::String(padNumber(selection)), juce::dontSendNotification);
     keyboard.profile = &library.current(); keyboard.padNumbers = padNumbers;
     keyboardViewport.setVisible(view == 0 && keyboardMode); keyboard.updateAccessibleKey(); repaint();
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    if (mainScreenPanel)
+    {
+        emptyState.setText(library.current().pads.empty() ? "Nessun suono qui.\nTrascina una cartella o usa Collega cartella."
+            : "Nessun suono corrisponde ai filtri.\nControlla cartella, ricerca e preferiti.", juce::dontSendNotification);
+        mainScreenPanel->setScreen(view, keyboardMode, currentPage ? static_cast<int>(currentPage->indices.size()) : 0, filtered.empty());
+    }
+#endif
     preloadProfile(view == 0 && !keyboardMode && currentPage != nullptr ? currentPage->indices : std::vector<int>{});
 }
 Pad* MainComponent::selectedPad()
@@ -954,7 +1097,7 @@ void MainComponent::selectPad(int index)
     for (juce::Component* c : std::initializer_list<juce::Component*>{&padName,&replaceFile,&editorButton,&bindButton,&unbindButton,&favoriteButton,&volumeOverride,&padVolume,&padSpeed,&fadeIn,&fadeOut,&padMode}) c->setEnabled(pad != nullptr);
     if (pad)
     {
-        padHeading.setText("SUONO #" + juce::String(padNumber(index)), juce::dontSendNotification);
+        padHeading.setText("Suono #" + juce::String(padNumber(index)), juce::dontSendNotification);
         replaceFile.setButtonText(pad->fileMissing ? "Ricollega" : "Cambia file");
         padName.setText(pad->name, false); padFile.setText(pad->file.getFileName(), juce::dontSendNotification); padFile.setTooltip(pad->file.getFullPathName());
         keyInfo.setText(pad->key.isEmpty() ? "Nessun tasto assegnato" : "Tasto  " + pad->keyLabel, juce::dontSendNotification);
@@ -965,7 +1108,7 @@ void MainComponent::selectPad(int index)
         padMode.setSelectedId(pad->useGlobalMode ? 1 : static_cast<int>(pad->settings.mode) + 2, juce::dontSendNotification);
         keyboard.selectedKey = pad->key;
     }
-    else { padHeading.setText("DETTAGLI SUONO", juce::dontSendNotification); padName.clear(); padFile.setText("Seleziona un suono", juce::dontSendNotification); keyInfo.setText("", juce::dontSendNotification); volumeOverride.setToggleState(false, juce::dontSendNotification); keyboard.selectedKey.clear(); }
+    else { padHeading.setText("Dettagli suono", juce::dontSendNotification); padName.clear(); padFile.setText("Seleziona un suono", juce::dontSendNotification); keyInfo.setText("", juce::dontSendNotification); volumeOverride.setToggleState(false, juce::dontSendNotification); keyboard.selectedKey.clear(); }
     padVolume.setEnabled(pad != nullptr && pad->settings.overrideMasterVolume);
     padVolume.setTooltip(pad && pad->settings.overrideMasterVolume ? "Sostituisce i master di entrambe le uscite." : "Attiva 'Usa il volume del suono' per regolare questo pad.");
     updating = false;
@@ -1012,7 +1155,7 @@ void MainComponent::bindKey(const juce::String& key)
     pad->key = key; pad->keyLabel = keyLabel(key); binding = false;
     keyIndex[key] = selection;
     lastPreloadPlan.clear(); preloadProfile({});
-    save(); selectPad(selection); setStatus(rawKeyboard.enabled() ? "Tasto associato alla tastiera dedicata." : "Tasto associato. Le scorciatoie locali richiedono l'app in primo piano.");
+    save(); selectPad(selection); setStatus("Tasto associato.");
 }
 void MainComponent::setStatus(const juce::String& text, bool error)
 {
@@ -1020,7 +1163,7 @@ void MainComponent::setStatus(const juce::String& text, bool error)
     displayedPreloadRemaining = preloadRemaining.load();
     const auto displayed = text + (displayedPreloadRemaining > 0
         ? "  /  Preparazione suoni: " + juce::String(displayedPreloadRemaining) : juce::String());
-    statusLabel.setColour(juce::Label::textColourId, error ? palette::warning : palette::muted);
+    semanticTextColour(statusLabel, error ? uiColours::warning : uiColours::muted);
     statusLabel.setText(displayed, juce::dontSendNotification); statusLabel.setTooltip(displayed);
 }
 void MainComponent::refreshDevices()
@@ -1069,14 +1212,16 @@ void MainComponent::updateKeyboardStatus()
     const bool selected = keyboardDevice.getSelectedId() > 0;
     identifyKeyboard.setButtonText(rawKeyboard.identifying() ? "Annulla riconoscimento" : "Riconosci con F12");
     captureKeyboard.setEnabled(rawKeyboardReady && selected);
-    inputStatus.setText(juce::String(active ? "TASTIERA DEDICATA\nTasti bloccati nelle altre app" : pending ? "TASTIERA DEDICATA\nCollegamento in corso" : "COMANDI LOCALI\nApp in primo piano") + "\n\nEsc: stop / " + keyLabel(library.djStopKey) + ": DJ", juce::dontSendNotification);
-    inputStatus.setColour(juce::Label::textColourId, active ? palette::accent : palette::muted);
+    inputStatus.setText(active ? "Tastiera dedicata attiva" : pending ? "Collegamento tastiera..." : "Tasti locali\nSolo in primo piano", juce::dontSendNotification);
+    stopButton.setTooltip("Ferma tutti i suoni. Scorciatoia: Esc.");
+    djButton.setTooltip("Tieni premuto per mettere in pausa; rilascia per riprendere. Scorciatoia: " + keyLabel(library.djStopKey) + ".");
+    semanticTextColour(inputStatus, active ? uiColours::accent : uiColours::muted);
     keyboardStatus.setText(active ? "Attiva: i tasti selezionati controllano DualDeck e sono bloccati nelle altre app."
         : pending ? "Collegamento in corso. Mantieni rilasciati i tasti; puoi annullare con l'interruttore."
         : rawKeyboard.error().isNotEmpty() ? rawKeyboard.error()
         : selected ? "Tastiera selezionata. Rilascia tutti i tasti e attivala per bloccarli nelle altre app."
         : "Scegli una tastiera oppure usa Riconosci con F12.", juce::dontSendNotification);
-    keyboardStatus.setColour(juce::Label::textColourId, active ? palette::accent : rawKeyboard.error().isNotEmpty() ? palette::warning : palette::muted);
+    semanticTextColour(keyboardStatus, active ? uiColours::accent : rawKeyboard.error().isNotEmpty() ? uiColours::warning : uiColours::muted);
 }
 void MainComponent::replaceAudioFile()
 {
@@ -1097,6 +1242,7 @@ void MainComponent::replaceAudioFile()
 }
 void MainComponent::openPadEditor()
 {
+    hideAppearanceEditors();
     const auto* pad = selectedPad(); if (!pad) return;
     stopEditorPreview();
     editingPadId = pad->id; editingProfileId = library.current().id;
@@ -1284,8 +1430,8 @@ bool MainComponent::applyAudio()
     audio.setMicrophoneGain(static_cast<float>(microphoneVolume.getValue() / 100.0));
     audio.setMicrophoneMonitor(microphoneMonitorToggle.getToggleState() && monitorEnabled);
     const auto result = audio.configure(outputName, monitorName, monitorEnabled, inputName, microphoneEnabled);
-    outputDetails.setText(audio.main.details(), juce::dontSendNotification);
-    monitorDetails.setText(monitorEnabled && !audio.hasMonitor() && result.wasOk() ? "Stesso dispositivo: una sola copia, volume principale." : audio.monitor.details(), juce::dontSendNotification);
+    outputDevice.setTooltip(audio.main.details());
+    monitorDevice.setTooltip(monitorEnabled && !audio.hasMonitor() && result.wasOk() ? "Stesso dispositivo: una sola copia, volume principale." : audio.monitor.details());
     setStatus(result.wasOk() ? "Uscite audio pronte." : result.getErrorMessage(), result.failed());
     if (result.failed()) return false;
     library.outputDevice = outputName;
@@ -1330,6 +1476,9 @@ void MainComponent::timerCallback()
     if (error.isNotEmpty() || monitorError.isNotEmpty() || streamError.isNotEmpty())
     { stopAll(); setStatus("Audio: " + error + " " + monitorError + " " + streamError, true); }
     repaint(getWidth() - 220, getHeight() - 66, 212, 60);
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    outputMeter.repaint();
+#endif
 }
 void MainComponent::chooseAudioFolder()
 {
@@ -1386,8 +1535,6 @@ void MainComponent::updateAudioControls()
         core->setPitch(library.globalPitchEnabled ? library.globalPitch : 0.0);
     }
     outputVolume.setEnabled(true); monitorVolume.setEnabled(true);
-    outputMasterLabel.setText("MASTER / MICROFONO", juce::dontSendNotification);
-    monitorMasterLabel.setText("MASTER / CUFFIE", juce::dontSendNotification);
     globalPitch.setEnabled(library.globalPitchEnabled);
     const auto* pad = selectedPad();
     padVolume.setEnabled(pad != nullptr && pad->settings.overrideMasterVolume);

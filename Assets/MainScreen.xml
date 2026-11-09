@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<magic>
+  <Styles><Style name="DualDeck">
+    <Nodes/>
+    <Classes>
+      <nav min-height="50" max-height="50" margin="0 0 8 0"/>
+      <heading min-height="24" max-height="24" text-color="$text"/>
+      <field min-height="36" max-height="36"/>
+      <row min-height="40" max-height="40" flex-direction="row"/>
+      <compactHeader min-height="136" max-height="136" flex-direction="column"><media max-width="1200"/></compactHeader>
+      <header min-height="78" max-height="78" flex-direction="row"/>
+      <modeSpacing margin="0 0 0 16"><media min-width="1200"/></modeSpacing>
+      <audioActionRows active="audioActions" min-height="40" max-height="40" padding="0 0 10 0"/>
+      <collapsed min-height="0" max-height="0"/>
+      <primary button-color="$accent" text-color="$background"/>
+      <card background-color="$panel" radius="12" padding="17"/>
+    </Classes>
+    <Types>
+      <View margin="0" padding="0" border="0" background-color="00000000"/>
+      <Button margin="0" padding="0" border="0" background-color="00000000"/>
+      <ComboBox margin="0" padding="0" border="0" background-color="00000000"/>
+      <Slider margin="0" padding="0" border="0" background-color="00000000"/>
+      <ToggleButton margin="0" padding="0" border="0" background-color="00000000"/>
+      <TextEditor margin="0" padding="0" border="0" background-color="00000000"/>
+      <Label margin="0" padding="0" border="0" background-color="00000000"/>
+      <Pad margin="0" padding="0" border="0" background-color="00000000"/>
+      <PadGrid margin="0" padding="0" border="0" background-color="00000000"/>
+      <Keyboard margin="0" padding="0" border="0" background-color="00000000"/>
+      <AudioPage margin="0" padding="0" border="0" background-color="00000000"/>
+      <Meter margin="0" padding="0" border="0" background-color="00000000"/>
+    </Types>
+    <Palettes><default background="ff0b111b" panel="ff121c29" tile="ff182536" line="ff28384b" text="ffedf3f9" muted="ff8c9eb3" accent="ff63dfc4" blue="ff7aa8ff" warning="ffffc579"/></Palettes>
+  </Style></Styles>
+  <View id="mainRoot" flex-direction="row" background-color="$background">
+    <View id="sidebar" flex-direction="column" min-width="196" max-width="196" padding="16" background-color="$panel">
+      <View flex-direction="row" min-height="100" max-height="100" padding="8 0 54 0">
+        <Label id="brandMark" min-width="34" max-width="34" background-color="$accent" radius="8" text-color="$background"/>
+        <Label id="brandName" margin="0 0 0 8" text-color="$text"/>
+      </View>
+      <Button id="boardTab" class="nav"/>
+      <Button id="audioTab" class="nav"/>
+      <Button id="keyboardTab" class="nav"/>
+      <View min-height="16" max-height="16"/>
+      <Label id="outputMasterLabel" class="heading"/>
+      <Slider id="outputVolume" class="field"/>
+      <View min-height="14" max-height="14"/>
+      <Label id="monitorMasterLabel" class="heading"/>
+      <Slider id="monitorVolume" class="field"/>
+      <View min-height="20" max-height="20"/>
+      <View visibility="board" flex-direction="column" min-height="76" max-height="76">
+        <ToggleButton id="globalPitchToggle" min-height="32" max-height="32"/>
+        <Slider id="globalPitch" class="field"/>
+      </View>
+      <Label id="folderSummary" min-height="48" max-height="48"/>
+      <Button id="refreshFolders" class="field"/>
+      <View min-height="16"/>
+      <Label id="inputStatus" min-height="70" max-height="70"/>
+      <Button id="stopButton" min-height="44" max-height="44" margin="0 0 6 0"/>
+      <Button id="djButton" min-height="32" max-height="32"/>
+    </View>
+    <View flex-direction="column" padding="26 24 0 22">
+      <View id="pages" display="contents">
+        <View id="boardPage" visibility="board" flex-direction="row">
+          <View id="boardContent" flex-direction="column">
+            <View id="profileToolbar" class="compactHeader header" flex-wrap="wrap">
+              <View flex-direction="column" min-width="382" max-width="382" min-height="68" max-height="68">
+                <Label id="profileLabel" class="heading"/>
+                <View class="row">
+                  <ComboBox id="profiles" margin="0 8 0 0" min-width="168"/>
+                  <Button id="newProfile" min-width="38" max-width="38" margin="0 8 0 0"/>
+                  <Button id="renameProfile" min-width="88" max-width="88" margin="0 8 0 0"/>
+                  <Button id="deleteProfile" min-width="80" max-width="80"/>
+                </View>
+              </View>
+              <View class="modeSpacing" flex-direction="column" min-width="226" max-width="226" min-height="68" max-height="68">
+                <Label id="modeLabel" class="heading"/>
+                <ComboBox id="globalMode" class="field"/>
+              </View>
+            </View>
+            <View flex-direction="row" min-height="44" max-height="44" padding="0 0 10 0">
+              <TextEditor id="search" margin="0 12 0 0" min-width="120"/>
+              <Button id="tilesButton" min-width="67" max-width="67" margin="0 8 0 0"/>
+              <Button id="keyboardButton" min-width="89" max-width="89"/>
+            </View>
+            <View flex-direction="row" min-height="38" max-height="38" padding="0 0 9 0">
+              <ToggleButton id="favoritesOnly" min-width="112" max-width="128" margin="0 8 0 0"/>
+              <ComboBox id="sortBy" min-width="128" max-width="160" margin="0 8 0 0"/>
+              <Button id="sortDirection" min-width="86" max-width="96"/>
+            </View>
+            <View id="boardCanvas" display="contents">
+              <View visibility="pads" flex-direction="column">
+                <View flex-direction="row" min-height="38" max-height="38" padding="0 0 8 0">
+                  <ComboBox id="padFolderFilter" min-width="160"/>
+                  <Label id="pageLabel" min-width="100" max-width="140" margin="0 8"/>
+                  <Button id="previous" min-width="36" max-width="36" margin="0 8 0 0"/>
+                  <Button id="next" min-width="36" max-width="36"/>
+                </View>
+                <Label id="padFolderHeading" min-height="30" max-height="30"/>
+                <View display="contents">
+                  <PadGrid id="padGrid" min-pad-width="120" min-pad-height="100" gap="9" max-columns="6" scroll-mode="scroll-vertical">
+                    <Pad id="padTile1"/>
+<Pad id="padTile2"/>
+<Pad id="padTile3"/>
+<Pad id="padTile4"/>
+<Pad id="padTile5"/>
+<Pad id="padTile6"/>
+<Pad id="padTile7"/>
+<Pad id="padTile8"/>
+<Pad id="padTile9"/>
+<Pad id="padTile10"/>
+<Pad id="padTile11"/>
+<Pad id="padTile12"/>
+<Pad id="padTile13"/>
+<Pad id="padTile14"/>
+<Pad id="padTile15"/>
+<Pad id="padTile16"/>
+<Pad id="padTile17"/>
+<Pad id="padTile18"/>
+<Pad id="padTile19"/>
+<Pad id="padTile20"/>
+<Pad id="padTile21"/>
+<Pad id="padTile22"/>
+<Pad id="padTile23"/>
+<Pad id="padTile24"/>
+                  </PadGrid>
+                  <Label id="emptyState" visibility="empty" text-color="$muted" font-size="18"/>
+                </View>
+              </View>
+              <Keyboard id="graphicalKeyboard" visibility="keyboard"/>
+            </View>
+          </View>
+          <View id="inspector" class="card" flex-direction="column" min-width="304" max-width="304" margin="0 0 0 22">
+            <Button id="importButton" class="primary" min-height="54" max-height="54" margin="0 0 14 0"/>
+            <Label id="padHeading" class="heading"/>
+            <TextEditor id="padName" min-height="38" max-height="38" margin="0 0 4 0"/>
+            <View flex-direction="row" min-height="32" max-height="32">
+              <Label id="padFile"/>
+              <Button id="replaceFile" min-width="90" max-width="90" margin="2 0 4 4"/>
+            </View>
+            <Label id="keyInfo" min-height="28" max-height="28"/>
+            <View flex-direction="row" min-height="38" max-height="38" margin="0 0 5 0">
+              <Button id="bindButton" margin="0 6 0 0"/>
+              <Button id="unbindButton" min-width="59" max-width="59"/>
+            </View>
+            <View flex-direction="row" min-height="36" max-height="36">
+              <ToggleButton id="favoriteButton" min-width="88" max-width="88"/>
+              <Button id="editorButton" margin="2 0 3 4"/>
+            </View>
+            <ToggleButton id="volumeOverride" min-height="36" max-height="36"/>
+            <Label id="volumeLabel" min-height="22" max-height="22"/>
+            <Slider id="padVolume" min-height="32" max-height="32"/>
+            <Label id="speedLabel" min-height="22" max-height="22"/>
+            <Slider id="padSpeed" min-height="32" max-height="32"/>
+            <Label id="padModeLabel" min-height="22" max-height="22"/>
+            <ComboBox id="padMode" min-height="38" max-height="38" margin="0 0 5 0"/>
+            <Label id="fadeLabel" min-height="26" max-height="26"/>
+            <Slider id="fadeIn" min-height="30" max-height="30"/>
+            <Slider id="fadeOut" min-height="30" max-height="30"/>
+            <View/>
+          </View>
+        </View>
+        <View id="settingsPage" visibility="settings" flex-direction="column">
+          <Label id="title" min-height="46" max-height="46" text-color="$text"/>
+          <View id="audioActions" class="audioActionRows collapsed" visibility="audioActions" flex-direction="row">
+            <Button id="editAppearance" min-width="168" max-width="168" margin="0 8 0 0"/>
+            <Button id="saveAppearance" min-width="136" max-width="136" margin="0 8 0 0"/>
+            <Button id="resetAppearance" min-width="120" max-width="120"/>
+            <View/>
+          </View>
+          <View display="contents">
+            <AudioPage id="audioPage" visibility="audio"/>
+            <View id="dedicatedPage" visibility="dedicated" class="card" flex-direction="column" padding="28">
+              <Label id="keyboardHeading" class="heading"/>
+              <ComboBox id="keyboardDevice" min-height="54" max-height="54" margin="12 0 4 0" max-width="840"/>
+              <View flex-direction="row" min-height="62" max-height="62" margin="12 0 12 0">
+                <Button id="identifyKeyboard" min-width="202" max-width="202" margin="0 12 0 0"/>
+                <Button id="scanKeyboards" min-width="190" max-width="190"/>
+                <View/>
+              </View>
+              <ToggleButton id="captureKeyboard" min-height="42" max-height="42"/>
+              <Label id="keyboardStatus" min-height="56" max-height="56"/>
+              <Label id="lastKey" min-height="36" max-height="36"/>
+              <Label id="keyboardHelp" min-height="68" max-height="68"/>
+              <View/>
+            </View>
+          </View>
+        </View>
+      </View>
+      <View id="footer" flex-direction="row" min-height="76" max-height="76" padding="12 0" border="1 0 0 0" border-color="$line" flex-align-items="center">
+        <Label id="statusLabel" margin="0 16 0 0"/>
+        <Meter id="outputMeter" min-width="184" max-width="184" min-height="5" max-height="5"/>
+      </View>
+    </View>
+  </View>
+</magic>
