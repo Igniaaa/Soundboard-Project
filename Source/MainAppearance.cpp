@@ -42,6 +42,7 @@ void MainComponent::initialiseMainScreen()
     ADD("ComboBox", profiles); ADD("ComboBox", globalMode); ADD("ComboBox", sortBy); ADD("ComboBox", padFolderFilter); ADD("ComboBox", padMode); ADD("ComboBox", keyboardDevice);
     ADD("TextEditor", search); ADD("TextEditor", padName);
     ADD("Button", boardTab); ADD("Button", audioTab); ADD("Button", keyboardTab); ADD("Button", importButton);
+    ADD("ToggleButton", soundInspectorToggle);
     ADD("Button", newProfile); ADD("Button", renameProfile); ADD("Button", deleteProfile); ADD("Button", sortDirection); ADD("Button", refreshFolders);
     ADD("Button", identifyKeyboard); ADD("Button", scanKeyboards); ADD("Button", replaceFile); ADD("Button", editorButton); ADD("Button", stopButton); ADD("Button", djButton);
     ADD("Button", previous); ADD("Button", next); ADD("Button", tilesButton); ADD("Button", keyboardButton); ADD("Button", bindButton); ADD("Button", unbindButton);

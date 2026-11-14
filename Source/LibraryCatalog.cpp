@@ -55,6 +55,18 @@ bool Library::removeProfile(const juce::String& id)
     ensureProfile();
     return true;
 }
+bool Library::removePad(const juce::String& profileId, const juce::String& padId)
+{
+    auto* profile = findProfile(profileId);
+    if (!profile) return false;
+    const auto found = std::find_if(profile->pads.begin(), profile->pads.end(), [&](const Pad& pad) { return pad.id == padId; });
+    if (found == profile->pads.end()) return false;
+    const auto key = pathKey(found->file);
+    if (std::none_of(profile->excludedFiles.begin(), profile->excludedFiles.end(), [&](const juce::File& file) { return pathKey(file) == key; }))
+        profile->excludedFiles.push_back(found->file);
+    profile->pads.erase(found);
+    return true;
+}
 FolderScan scanAudioFolders(const std::vector<juce::File>& folders, const std::vector<juce::File>& knownFiles,
                            const std::function<bool()>& cancelled)
 {
@@ -115,6 +127,7 @@ int Library::mergeFolderScan(const juce::String& profileId, const FolderScan& sc
         pad.fileMissing = !item.available; pad.fileSizeBytes = item.size; pad.modifiedMs = item.modified;
     }
     int added = 0;
+    for (const auto& file : profile->excludedFiles) existing.insert(pathKey(file));
     for (const auto& item : scan.files)
     {
         if (!item.discovered || !item.available || !existing.insert(pathKey(item.file)).second) continue;

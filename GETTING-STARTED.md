@@ -32,17 +32,17 @@ sono in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 ### 2. Installare il driver
 
 Se il driver è già installato e funzionante, passare al collegamento della DLL.
-Altrimenti aprire PowerShell **come amministratore**, entrare nella cartella
-`Interception\command line installer` estratta e visualizzare le istruzioni:
+Altrimenti aprire il **Prompt dei comandi come amministratore**, entrare nella
+cartella `Interception\command line installer` estratta e visualizzare le istruzioni:
 
-```powershell
-.\install-interception.exe
+```text
+install-interception.exe
 ```
 
 Per installare il driver:
 
-```powershell
-.\install-interception.exe /install
+```text
+install-interception.exe /install
 ```
 
 Controllare l'esito e, dopo un'installazione riuscita, **riavviare Windows**.
@@ -66,10 +66,10 @@ DualDeck/
 
 Usare la DLL **x64 v1.0.1**, anche se l'archivio contiene una cartella x86.
 Non occorre copiarla nelle cartelle di sistema o registrarla con regsvr32.
-Dalla cartella di DualDeck verificarla con PowerShell:
+Dalla cartella di DualDeck verificarla con il Prompt dei comandi:
 
-```powershell
-Get-FileHash .\keyboard-runtime\interception.dll -Algorithm SHA256
+```text
+certutil -hashfile keyboard-runtime\interception.dll SHA256
 ```
 
 Il valore atteso è:
@@ -104,10 +104,10 @@ non è garantita per tutte le versioni Windows e periferiche.
 ### Disinstallare Interception
 
 Disattivare il blocco e chiudere DualDeck e le altre app che usano Interception.
-Da PowerShell come amministratore, nella cartella dell'installer originale:
+Dal Prompt dei comandi come amministratore, nella cartella dell'installer originale:
 
-```powershell
-.\install-interception.exe /uninstall
+```text
+install-interception.exe /uninstall
 ```
 
 Dopo la disinstallazione riuscita riavviare Windows. Rimuovere la sola DLL dalla

@@ -202,7 +202,7 @@ problema rilevato nell'ambito del prototipo.
   il cui autore descrive l'uso non commerciale e dichiara test fino a Windows 10.
   Il pacchetto ufficiale è stato scaricato su autorizzazione, non installato.
   SHA-256: `AD038963D6413055765128B0B931F6E765147C9916DBA79E65D872B261F9AF10`.
-- `Inspect-KeyboardDriver.ps1 -Archive <archivio.zip>` estrae staticamente
+- `python scripts/dev.py inspect-driver --archive <archivio.zip>` estrae staticamente
   le risorse PE e controlla le firme senza eseguire l'installer. Accetta solo
   l'hash dell'archivio ufficiale analizzato: una copia alterata viene rifiutata
   prima dell'estrazione. Tutti i 20 driver incorporati risultano Authenticode
@@ -217,8 +217,8 @@ problema rilevato nell'ambito del prototipo.
 - [OpenInputBridge](https://github.com/Applet-LLC/OpenInputBridge) dichiara
   binari WHQL ma li distribuisce a pagamento; la versione firmata è esclusa
   dal vincolo gratuito. I sorgenti gratuiti non equivalgono a binari di
-  produzione firmati. Gli strumenti portatili locali non includono gli
-  header kernel WDK per un driver personalizzato.
+  produzione firmati. L'installazione standard di Visual Studio non include
+  gli header kernel WDK per un driver personalizzato.
 
 ### Passi ancora necessari per il blocco reale
 

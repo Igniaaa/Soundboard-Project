@@ -104,6 +104,37 @@ void DeckLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& butt
 }
 void DeckLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& button, bool over, bool down)
 {
+    if (static_cast<bool>(button.getProperties().getWithDefault("inspector-toggle-icon", false)))
+    {
+        const auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
+        const auto accent = uiColour(button, uiColours::accent);
+        auto background = button.getToggleState() ? accent.withAlpha(0.18f) : uiColour(button, uiColours::panel);
+        if (over) background = background.brighter(0.06f);
+        if (down) background = background.brighter(0.08f);
+        g.setColour(background);
+        g.fillRoundedRectangle(bounds, uiRadius(button, 7.0f));
+        g.setColour(button.getToggleState() ? accent : uiColour(button, uiColours::line));
+        g.drawRoundedRectangle(bounds, uiRadius(button, 7.0f), 1.0f);
+
+        if (!button.isEnabled()) g.setOpacity(0.5f);
+        const auto icon = juce::Rectangle<float>(10.0f, (static_cast<float>(button.getHeight()) - 18.0f) * 0.5f, 18.0f, 18.0f);
+        const auto iconColour = button.getToggleState() ? accent : button.findColour(juce::ToggleButton::textColourId);
+        g.setColour(iconColour);
+        g.drawRoundedRectangle(icon, 2.5f, 1.5f);
+        const auto dividerX = icon.getRight() - 6.0f;
+        g.drawLine(dividerX, icon.getY() + 1.5f, dividerX, icon.getBottom() - 1.5f, 1.4f);
+        g.drawLine(icon.getX() + 3.0f, icon.getY() + 5.0f, dividerX - 2.0f, icon.getY() + 5.0f, 1.2f);
+        g.drawLine(icon.getX() + 3.0f, icon.getY() + 9.0f, dividerX - 2.0f, icon.getY() + 9.0f, 1.2f);
+        g.drawLine(dividerX + 2.0f, icon.getY() + 5.0f, icon.getRight() - 2.0f, icon.getY() + 5.0f, 1.2f);
+        g.drawLine(dividerX + 2.0f, icon.getY() + 9.0f, icon.getRight() - 2.0f, icon.getY() + 9.0f, 1.2f);
+
+        const auto size = uiFontHeight(button, juce::jmin(15.0f, static_cast<float>(button.getHeight()) * 0.75f)) * uiFontScale(button);
+        g.setColour(button.findColour(juce::ToggleButton::textColourId));
+        g.setFont(juce::Font(juce::FontOptions(size)));
+        g.drawFittedText(button.getButtonText(), button.getLocalBounds().withTrimmedLeft(36).withTrimmedRight(6), juce::Justification::centredLeft, 1);
+        return;
+    }
+
     const auto size = uiFontHeight(button, juce::jmin(15.0f, static_cast<float>(button.getHeight()) * 0.75f)) * uiFontScale(button);
     const auto tick = size * 1.1f;
     drawTickBox(g, button, 4.0f, (static_cast<float>(button.getHeight()) - tick) * 0.5f, tick, tick,
@@ -387,6 +418,15 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
         }
     }
     library.ensureProfile();
+    if (!smokeTest && loaded.wasOk() && library.repairedDuplicateFiles)
+    {
+        const auto repairSave = library.save(libraryFile);
+        if (repairSave.failed())
+        {
+            dirty = true;
+            juce::Logger::writeToLog("Rimozione dei pad duplicati dalla libreria non salvata: " + repairSave.getErrorMessage());
+        }
+    }
     label(title, "Soundboard", 27); title.setColour(juce::Label::textColourId, palette::text);
     title.setFont(font(27, true));
     label(profileLabel, "Profilo", 13); label(modeLabel, "Riproduzione", 13);
@@ -427,7 +467,11 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
         &bindButton,&unbindButton,&applyButton,&scanButton,&favoriteButton,&favoritesOnly,&monitorToggle,&keyboardViewport,
         &keyboardTab,&keyboardDevice,&identifyKeyboard,&scanKeyboards,&captureKeyboard,&replaceFile,&editorButton,
         &deleteProfile,&sortBy,&sortDirection,&refreshFolders,&volumeOverride,&globalPitchToggle,&padFolderFilter,
-        &microphoneToggle,&microphoneMonitorToggle}) addAndMakeVisible(component);
+        &microphoneToggle,&microphoneMonitorToggle
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+        ,&soundInspectorToggle
+#endif
+        }) addAndMakeVisible(component);
     keyboardViewport.setViewedComponent(&keyboard, false);
     keyboardViewport.setScrollBarsShown(false, true);
     keyboardViewport.setScrollOnDragMode(juce::Viewport::ScrollOnDragMode::never);
@@ -545,6 +589,12 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
         scanProfileFolders(library.current().id);
     };
     importButton.setTooltip("Collega una cartella di file audio (anche con sottocartelle). I suoni vengono letti dalla posizione originale.");
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    soundInspectorToggle.setClickingTogglesState(true);
+    soundInspectorToggle.setTooltip("Mostra o nasconde i controlli del suono selezionato.");
+    soundInspectorToggle.setTitle("Dettagli del suono");
+    soundInspectorToggle.getProperties().set("inspector-toggle-icon", true);
+#endif
     search.setTextToShowWhenEmpty("Cerca nella libreria...", palette::muted); search.setFont(font(14));
     search.onTextChange = [this]
     {
@@ -619,6 +669,12 @@ MainComponent::MainComponent(bool smoke, bool uiEditor) : smokeTest(smoke || uiE
         keyboardStatus.setText("Dispositivi cambiati: verifica la selezione e riattiva la tastiera.", juce::dontSendNotification);
     };
     importButton.onClick = [this] { chooseAudioFolder(); };
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    soundInspectorToggle.onClick = [this]
+    {
+        if (mainScreenPanel) mainScreenPanel->setInspectorOpen(soundInspectorToggle.getToggleState());
+    };
+#endif
     stopButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff472c38));
     stopButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffffb7c6));
     stopButton.onClick = [this] { stopAll(); setStatus("Tutti i suoni fermati."); };
@@ -1553,6 +1609,8 @@ void MainComponent::showPadMenu(int index)
     menu.addItem(4, "Libera il tasto", pad->key.isNotEmpty());
     menu.addItem(5, pad->fileMissing ? "Ricollega file audio..." : "Cambia file audio...");
     menu.addItem(6, "Audio ed effetti...");
+    menu.addSeparator();
+    menu.addItem(7, "Rimuovi pad dalla libreria...", writable);
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(this).withMousePosition(),
         [safe = juce::Component::SafePointer<MainComponent>(this), profileId, padId](int action)
         {
@@ -1567,6 +1625,28 @@ void MainComponent::showPadMenu(int index)
             else if (action == 4) safe->unbindButton.onClick();
             else if (action == 5) safe->replaceAudioFile();
             else if (action == 6) safe->openPadEditor();
+            else if (action == 7 && safe->writable)
+            {
+                juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::WarningIcon, "Rimuovere il pad?",
+                    "Il pad verrà rimosso dalla libreria e non verrà reimportato dalle cartelle collegate.\nIl file audio resterà sul disco.",
+                    "Rimuovi", "Annulla", safe.getComponent(),
+                    juce::ModalCallbackFunction::create([safe, profileId, padId](int answer)
+                    {
+                        if (!safe || answer != 1 || safe->library.current().id != profileId) return;
+                        auto& pads = safe->library.current().pads;
+                        const auto found = std::find_if(pads.begin(), pads.end(), [&](const Pad& item) { return item.id == padId; });
+                        if (found == pads.end()) return;
+                        const auto removedIndex = static_cast<int>(found - pads.begin());
+                        safe->stopAll();
+                        if (!safe->library.removePad(profileId, padId)) return;
+                        safe->selection = safe->library.current().pads.empty() ? -1
+                            : juce::jmin(removedIndex, static_cast<int>(safe->library.current().pads.size()) - 1);
+                        safe->page = 0;
+                        safe->refresh();
+                        safe->save();
+                        safe->setStatus("Pad rimosso dalla libreria. Il file audio resta sul disco.");
+                    }));
+            }
         });
 }
 bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files)

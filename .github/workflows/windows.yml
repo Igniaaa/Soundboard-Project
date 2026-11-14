@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 45
     defaults:
       run:
-        shell: pwsh
+        shell: cmd
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,26 +22,30 @@ jobs:
       - name: Packaging regression tests
         run: python -m unittest discover -s Tests -p test_release.py
       - name: Verified dependencies
-        run: ./Setup.ps1
+        run: python scripts/dev.py setup
+      - name: Configure Visual Studio CMake preset
+        run: cmake --preset vs-release
       - name: Compile with installed Microsoft toolchain
-        run: ./Build.ps1 -Toolchain Installed -NoPromote -SkipTests
+        run: cmake --build --preset vs-release --parallel 3
+      - name: Record build fingerprint
+        run: python scripts/dev.py finalize --build-dir build-vs-release
       - name: CTest, persistence, streaming, UI and performance probes
         # Device-dependent keyboard checks are performed on a real Windows PC.
         # Software keyboard and broker tests remain mandatory in CTest.
-        run: ./Test.ps1 -Performance -SkipKeyboardDevices
+        run: python scripts/test.py --preset vs-release --performance --skip-keyboard-devices
       - name: Portable clean-install regression
-        run: |
-          $env:DUALDECK_TEST_EXE = (Resolve-Path 'build-msvc/bin/DualDeckJuce.exe').Path
-          python -m unittest discover -s Tests -p test_clean_install.py
+        env:
+          DUALDECK_TEST_EXE: build-vs-release/bin/DualDeckJuce.exe
+        run: python -m unittest discover -s Tests -p test_clean_install.py
       - name: Package preview with corresponding source
-        run: python scripts/release.py bundle --binary build-msvc/bin/DualDeckJuce.exe --output dist/preview
+        run: python scripts/release.py bundle --binary build-vs-release/bin/DualDeckJuce.exe --output dist/preview
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: dualdeck-test-reports
           path: |
             test-output/*.txt
-            build-msvc/Testing/Temporary/LastTest.log
+            build-vs-release/Testing/Temporary/LastTest.log
           if-no-files-found: warn
           retention-days: 14
       - uses: actions/upload-artifact@v4

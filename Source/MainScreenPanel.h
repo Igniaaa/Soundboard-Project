@@ -4,7 +4,7 @@
 
 namespace dualdeck
 {
-class MainScreenPanel final : public juce::Component, private juce::ValueTree::Listener, private juce::AsyncUpdater, private juce::ComponentListener
+class MainScreenPanel final : public juce::Component, public juce::DragAndDropContainer, private juce::ValueTree::Listener, private juce::AsyncUpdater, private juce::ComponentListener
 {
 public:
     struct Control { juce::String id, type; juce::Component& component; };
@@ -16,6 +16,8 @@ public:
     void rebuild();
     void applyTheme(const UiTheme&);
     void setScreen(int view, bool keyboardMode, int visiblePads, bool empty);
+    void setInspectorOpen(bool open);
+    bool isInspectorOpen() const { return inspectorOpen; }
     void refreshControl(const juce::String& id, bool rememberMetadata = false);
     juce::ValueTree findNode(const juce::String& id);
     juce::Component* wrappedControl(const juce::String& id);
@@ -36,6 +38,8 @@ private:
     void activateLayout(juce::ValueTree);
     juce::ValueTree embeddedLayout() const;
     juce::Result validateLayout(juce::ValueTree);
+    void migrateLayout(juce::ValueTree);
+    void applyInspectorLayout();
     void syncVisibility();
     void observeVisibility();
     void componentVisibilityChanged(juce::Component&) override;
@@ -55,6 +59,7 @@ private:
     bool updating = false, designerVisible = false, designerRequested = false, designerReady = false;
     int section = 0, padCount = 0;
     bool keyboard = false, empty = true;
+    bool inspectorOpen = false;
     bool syncingVisibility = false, rebuildingVisibility = false, closing = false;
     std::vector<juce::Component::SafePointer<juce::Component>> visibilitySources;
     juce::Component::SafePointer<juce::Component> designerHost;

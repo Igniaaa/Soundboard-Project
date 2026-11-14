@@ -210,6 +210,9 @@ private:
     juce::ComboBox profiles, globalMode, outputDevice, monitorDevice, inputDevice, padMode, keyboardDevice, sortBy;
     juce::TextEditor search, padName;
     juce::TextButton boardTab {"Soundboard"}, audioTab {"Audio e uscite"}, importButton {"+  Collega cartella"};
+#if defined(DUALDECK_FOLEYS_AUDIO_UI)
+    juce::ToggleButton soundInspectorToggle {"Dettagli"};
+#endif
     juce::TextButton newProfile {"+"}, renameProfile {"Rinomina"};
     juce::TextButton deleteProfile {"Rimuovi"}, sortDirection {"Crescente"}, refreshFolders {"Aggiorna cartelle"};
     juce::Label folderSummary, padFolderHeading;

@@ -127,16 +127,9 @@ Il pulsante di anteprima A-B usa un ID riservato e una voce `holdLoop` sui marca
 
 ## 6. Compilazione e verifiche
 
-`CMakeLists.txt` richiede CMake 3.22 o successivo, C++17 e JUCE nella cartella `deps/JUCE-9.0.4` o nel percorso indicato con `JUCE_DIR`. La configurazione Windows collega Media Foundation; i target `DualDeckAudioTests` e `DualDeckKeyboardTests` sono registrati in CTest. `DualDeckKeyboardIsolationProbe` è un eseguibile separato su Windows. La guida d'uso descrive il download degli strumenti portatili con `Setup.ps1` e il parametro `-ToolRoot` per riutilizzarli da un'altra copia.
+`CMakeLists.txt` richiede CMake 3.22 o successivo, C++17 e JUCE nella cartella `deps/JUCE-9.0.4` o nel percorso indicato con `JUCE_DIR`. La configurazione Windows collega Media Foundation; i target `DualDeckAudioTests` e `DualDeckKeyboardTests` sono registrati in CTest. `DualDeckKeyboardIsolationProbe` è un eseguibile separato su Windows. I preset condivisi in `CMakePresets.json` configurano Visual Studio 2022 x64; `scripts/dev.py` prepara le dipendenze e registra le build.
 
-Da PowerShell, nella cartella `juce-version`:
-
-```powershell
-.\Build.ps1
-.\Test.ps1 -AudioDevices -Performance
-```
-
-`Build.ps1` configura una build Release MSVC con Ninja, compila, esegue CTest salvo `-SkipTests` e copia l'eseguibile versionato. `Test.ps1` esegue CTest e le modalità integrate `--self-test`, `--keyboard-smoke`, `--interaction-smoke` e `--smoke-test`; le verifiche dei dispositivi fisici e delle prestazioni sono opzionali. I report e le schermate finiscono in `test-output`. `--self-test` esercita il round trip e le migrazioni della libreria, la scansione, cache/revisioni e un caso del ring microfono. I test DSP in [Tests/AudioTests.cpp](Tests/AudioTests.cpp) e del filtro tasti in [Tests/KeyboardTests.cpp](Tests/KeyboardTests.cpp) non richiedono la GUI. Gli esiti storici sono nei file `VERIFICHE-*.md`: descrivono esecuzioni precedenti, non costituiscono una verifica automatica di ogni modifica successiva.
+Per una build locale, aprire la cartella in Visual Studio, scegliere `vs-release` e compilare `DualDeckJuce`. Per i controlli usare `python scripts/test.py --preset vs-release --audio-devices --performance`. `scripts/test.py` esegue CTest e le modalità integrate `--self-test`, `--keyboard-smoke`, `--interaction-smoke` e `--smoke-test`; le verifiche dei dispositivi fisici e delle prestazioni sono opzionali. I report e le schermate finiscono in `test-output`. `--self-test` esercita il round trip e le migrazioni della libreria, la scansione, cache/revisioni e un caso del ring microfono. I test DSP in [Tests/AudioTests.cpp](Tests/AudioTests.cpp) e del filtro tasti in [Tests/KeyboardTests.cpp](Tests/KeyboardTests.cpp) non richiedono la GUI. Gli esiti storici sono nei file `VERIFICHE-*.md`: descrivono esecuzioni precedenti, non costituiscono una verifica automatica di ogni modifica successiva.
 
 ## 7. Come estendere il codice
 

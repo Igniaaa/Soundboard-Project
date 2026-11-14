@@ -213,7 +213,7 @@ Risultato osservato ed eventuali anomalie:
 Misure raccolte o log disponibili:
 ```
 
-Le prove sintetiche eseguite da Test.ps1 sono documentate in
+Le prove sintetiche eseguite da `scripts/test.py` sono documentate in
 [BUILDING.md](BUILDING.md); il riscontro d'ascolto e il limite ancora aperto sulle
 prestazioni sono in [VERIFICHE-STREAMING.md](Changelogs/VERIFICHE-STREAMING.md).
 Questa checklist descrive le attività: non avvia automaticamente prove di crash,

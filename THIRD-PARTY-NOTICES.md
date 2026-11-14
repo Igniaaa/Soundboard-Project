@@ -39,7 +39,8 @@ istruzioni per procurarsi i componenti dal produttore, installare separatamente
 il driver e collegare la DLL. La procedura è in
 [GETTING-STARTED.md](GETTING-STARTED.md) e in `keyboard-runtime/LEGGIMI.txt`
 nel pacchetto Windows. Il setup standard non prepara questi componenti;
-`Setup-KeyboardBridge.ps1` resta uno strumento opzionale di sviluppo locale.
+`python scripts/dev.py setup-keyboard-bridge` è uno strumento opzionale di
+sviluppo locale.
 
 Il bridge opzionale
 verifica la DLL ufficiale x64 per SHA-256 e usa anche il layout interno del
@@ -55,7 +56,6 @@ locale funziona senza di essi.
 ## Strumenti di sviluppo
 
 CMake: https://github.com/Kitware/CMake (avvisi nel pacchetto ufficiale).
-Ninja: https://github.com/ninja-build/ninja (Apache-2.0).
 Python, MSVC, Windows SDK e Visual Studio/Build Tools restano strumenti esterni
 con termini propri; non sono inclusi negli archivi pubblici di DualDeck.
 

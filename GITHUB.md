@@ -1,10 +1,10 @@
 # Preparare il repository e la release
 
-La radice Git è juce-version. La preparazione 1.0 è sul ramo
-release/1.0-preparation; non inizializzare un secondo repository in DualDeck-2.
+La radice Git è juce-version. Non inizializzare un secondo repository in
+DualDeck-2.
 
-Includere Source, Tests (anche i nuovi test dello streaming), scripts, Assets,
-workflow .github, script PowerShell, VERSION e documenti di licenza/release.
+Includere Source, Tests, scripts Python, preset CMake, Assets, workflow .github,
+VERSION e documenti di licenza/release.
 Tests non è più esclusa globalmente: nuovi test necessari non devono sparire
 da una checkout pulita.
 

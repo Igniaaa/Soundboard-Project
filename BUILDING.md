@@ -1,84 +1,135 @@
 # Compilare e verificare DualDeck
 
-## Windows x64 da una checkout pulita
+## Requisiti
 
-Servono PowerShell, Python 3.10+, Git per ottenere la checkout e una connessione
-durante il primo setup. Installare dagli strumenti ufficiali Microsoft Visual
-Studio 2022 o Build Tools 2022 con **Desktop development with C++**, MSVC v143
-x64 e Windows SDK. Accettare direttamente i termini del prodotto Microsoft.
-Questi strumenti non sono redistribuiti nel pacchetto.
+- Windows x64.
+- Visual Studio 2022 con **Desktop development with C++**, MSVC v143 x64,
+  Windows SDK e CMake tools.
+- Python 3.10 o successivo.
+- Connessione Internet al primo setup per scaricare JUCE 9.0.4.
 
-```powershell
-.\Setup.ps1
-.\Build.ps1 -Toolchain Installed -NoPromote -SkipTests
-.\Test.ps1
+Il progetto usa CMake e presenta quattro preset condivisi tra Visual Studio e
+CI: `vs-release`, `vs-foleys`, `vs-foleys-designer` e `vs-ui-debug`. Ognuno ha
+una directory di build `build-vs-*` separata; i primi tre producono
+`bin/DualDeckJuce.exe`.
+Il preset Debug è destinato all'editor visivo della UI.
+
+## Prima compilazione in Visual Studio
+
+1. Aprire un terminale nella cartella del progetto ed eseguire:
+
+   ```text
+   python scripts/dev.py setup
+   ```
+
+   Il comando scarica JUCE nell'archivio ufficiale, ne verifica l'hash e
+   controlla che Visual Studio 2022 e il workload C++ siano installati. Non
+   installa compilatori o driver.
+2. In Visual Studio scegliere **File > Open > Folder** e aprire questa cartella.
+3. Nella barra CMake selezionare **DualDeck Release (Visual Studio 2022 x64)**.
+4. Scegliere il target `DualDeckJuce` e il comando **Build**. L'eseguibile sarà
+   in `build-vs-release/bin/DualDeckJuce.exe`.
+5. Per eseguire le prove automatiche:
+
+   ```text
+   python scripts/test.py --preset vs-release
+   ```
+
+Per compilare senza l'interfaccia di Visual Studio si possono usare gli stessi
+preset da un terminale con CMake disponibile:
+
+```text
+cmake --preset vs-release
+cmake --build --preset vs-release --parallel 3
+python scripts/dev.py finalize --build-dir build-vs-release
+```
+
+`finalize` registra versione, hash dell'eseguibile e impronta di sorgenti e
+JUCE. Non sostituisce le copie approvate. Per promuovere esplicitamente la
+build a `DualDeckJuce.exe` e `DualDeckJuce-<versione>.exe`, aggiungere
+`--promote`.
+
+## Test e report
+
+`scripts/test.py` esegue CTest e le prove applicative di persistenza, streaming,
+interazioni e schermate. Termina un processo che supera 60 secondi e, se
+disponibile, stampa il rapporto della prova fallita. I file sono salvati in
+`test-output`.
+
+Opzioni:
+
+```text
+python scripts/test.py --preset vs-release --audio-devices --performance
+python scripts/test.py --preset vs-release --skip-keyboard-devices
+python scripts/test.py --preset vs-foleys --build-dir build-vs-foleys --output-dir test-output/foleys
+```
+
+`--audio-devices` apre davvero le periferiche per una prova silenziosa.
+`--performance` aggiunge misure sintetiche. `--skip-keyboard-devices` registra
+esplicitamente lo skip delle prove sulle tastiere fisiche; le suite software
+di tastiera e bridge in CTest restano obbligatorie.
+
+Su GitHub Actions il runner Windows usa gli stessi preset con CMake CLI.
+Le tastiere fisiche vengono saltate, i report sono conservati come artefatto
+anche se il job fallisce e il pacchetto di anteprima viene costruito solo dopo
+la registrazione della build.
+
+Le regressioni del packaging si possono controllare con:
+
+```text
 python -m unittest discover -s Tests -p test_release.py
 ```
 
-Setup scarica solo JUCE 9.0.4, CMake 4.4.4 e Ninja 1.13.2 da fonti ufficiali,
-controllando SHA-256 anche per gli archivi già presenti; verifica l'albero JUCE
-estratto prima e dopo la compilazione. Non installa compilatori o driver. Build usa il generatore
-Visual Studio 2022 e produce build-msvc/bin/DualDeckJuce.exe.
-Test esegue CTest, persistenza, streaming, interazioni sintetiche e anteprime.
-Non attiva cattura dei tasti. Il runner GitHub non installa Interception.
+## Preset Foleys
 
-Su GitHub il comando usa `Test.ps1 -Performance -SkipKeyboardDevices`: la prova
-Raw Input sulle periferiche del computer viene registrata come **SKIP**.
-Le suite software di tastiera e broker, il layout e le interazioni simulate
-restano obbligatori. Il collaudo delle tastiere reali resta nella checklist.
-Sul proprio PC, `Test.ps1` continua a eseguire la prova dispositivi per impostazione
-predefinita e un suo errore fa fallire il comando.
+Prima di selezionare il preset Foleys, scaricare e verificare la dipendenza:
 
-Quando un test con rapporto testuale fallisce, lo script ne stampa il contenuto
-nel log. Il workflow conserva inoltre i rapporti di test nell'artefatto
-`dualdeck-test-reports`, anche in caso di fallimento.
-
-## Strumenti portatili già disponibili
-
-La toolchain MSVC portatile predisposta localmente continua a funzionare:
-
-```powershell
-.\Build.ps1 -Toolchain Portable -NoPromote
+```text
+python scripts/dev.py setup-foleys
 ```
 
-È possibile passarne la cartella con `-ToolRoot C:\percorso\checkout`.
-Il precedente bootstrap derivato da un gist privo di licenza esplicita non è
-incluso. Per nuove installazioni usare il percorso Microsoft descritto sopra.
+In Visual Studio scegliere **DualDeck Foleys** o **DualDeck Foleys Designer**.
+Gli eseguibili finiscono rispettivamente in `build-vs-foleys/bin` e
+`build-vs-foleys-designer/bin`. Per prove e finalizzazione, passare il preset o la
+directory corrispondente agli strumenti Python. Le build Foleys non sostituiscono
+la build standard approvata.
 
-## Directory separate
+## Pacchetti di anteprima
 
-Build accetta `-BuildDirectory`, `-JuceDirectory` e `-ToolRoot`.
-Test accetta `-Executable`, `-BuildDirectory`, `-OutputDirectory` e `-ToolRoot`.
-Permettono di compilare uno snapshot e testarlo senza usare le copie approvate
-o i dati personali. `-AudioDevices` apre davvero le periferiche per una prova
-silenziosa; `-Performance` aggiunge misure sintetiche. Non equivalgono a un
-collaudo udibile con Discord o alla misura della latenza fino al destinatario.
+Compilare e registrare lo stesso snapshot dei sorgenti, quindi creare gli
+archivi locali:
 
-## Anteprima con sorgenti corrispondenti
-
-```powershell
+```text
+python scripts/dev.py finalize --build-dir build-vs-release
 python scripts/release.py source --output test-output/source-snapshot.zip
-python scripts/release.py bundle --binary build-msvc/bin/DualDeckJuce.exe --output dist/preview-rc1
+python scripts/release.py bundle --binary build-vs-release/bin/DualDeckJuce.exe --output dist/preview-rc1
 ```
 
-Il secondo comando genera ZIP sorgenti, ZIP Windows di anteprima e
-SHA256SUMS.txt. Rifiuta output esistenti e archivi JUCE diversi dall'hash previsto.
-Non pubblica nulla. Il pacchetto Windows include sorgenti e JUCE 9.0.4 completo.
-Per ricompilare offline JUCE, estrarre il suo ZIP in deps, ottenendo
-deps/JUCE-9.0.4; gli strumenti di compilazione vanno predisposti separatamente.
-
-Eseguire il packaging **sullo stesso snapshot da cui è stato compilato il
-binario**, dopo i test. Build scrive un file .build.json accanto al binario;
-il packaging ne verifica versione, impronta del binario, albero sorgenti e JUCE.
-Un cambiamento dopo o durante la build richiede una nuova compilazione.
-BUILD-INFO.json registra queste impronte nell'archivio. Un hash documenta il
-contenuto; non sostituisce provenienza o firma.
+Il packaging rifiuta output già esistenti, sorgenti cambiati dopo la build,
+binari modificati e archivi JUCE con hash diverso. Genera gli ZIP sorgenti e
+Windows più `SHA256SUMS.txt`; non pubblica nulla. Mantenere `BUILD-INFO.json`
+accanto al pacchetto per identificare la distribuzione portatile.
 
 ## Interception, solo sviluppo locale opzionale
 
-Setup-KeyboardBridge.ps1 prepara DLL e avvisi da archivi ufficiali verificati.
-Non installa il driver e non fa parte del setup standard. Leggere prima
-THIRD-PARTY-NOTICES.md e i termini upstream. L'app compila senza DLL. Il pacchetto
-pubblico contiene `keyboard-runtime/LEGGIMI.txt` con le istruzioni per aggiungerla.
-Il packaging genera questo file senza copiare il runtime locale: DLL, driver e
-installer Interception restano esclusi dallo ZIP.
+La soundboard si compila e funziona senza Interception. Per preparare la DLL
+opzionale e gli avvisi delle licenze:
+
+```text
+python scripts/dev.py setup-keyboard-bridge
+```
+
+Il comando scarica e verifica gli archivi ufficiali e copia soltanto la DLL
+x64 nella cartella `keyboard-runtime`; non installa o avvia il driver. Prima
+dell'uso leggere [Avvisi sulle dipendenze](THIRD-PARTY-NOTICES.md),
+[Tastiera dedicata](TASTIERA-BLOCCO.md) e la [guida al primo avvio](GETTING-STARTED.md).
+
+Per l'ispezione statica dei driver inclusi nell'archivio ufficiale:
+
+```text
+python scripts/dev.py inspect-driver --archive deps/Interception-v1.0.1.zip
+```
+
+Richiede `signtool.exe` dal Windows SDK. Estrae le risorse e verifica le firme
+senza eseguire l'installer o i driver. Una firma valida non garantisce che
+Windows autorizzi il caricamento del driver.

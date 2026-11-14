@@ -11,12 +11,11 @@ import tempfile
 import zipfile
 
 ROOT_FILES = (
-    "CMakeLists.txt", "Build.ps1", "Setup.ps1", "Setup-Foleys.ps1", "FOLEYS-UI.md", "Test.ps1", "VERSION", "LICENSE",
+    "CMakeLists.txt", "CMakePresets.json", "FOLEYS-UI.md", "VERSION", "LICENSE",
     "COPYRIGHT.md", "README.md", "GETTING-STARTED.md", "BUILDING.md",
     "CONTRIBUTING.md", "THIRD-PARTY-NOTICES.md", "RELEASE-CHECKLIST.md",
     "CHANGELOG.md", "VERIFICA-RELEASE.md", "JUCE-LICENSE.md", "LEGGIMI.md", "GITHUB.md",
-    ".gitignore", ".gitattributes", "Setup-KeyboardBridge.ps1",
-    "Inspect-KeyboardDriver.ps1", "DOCUMENTAZIONE-CODICE.md",
+    ".gitignore", ".gitattributes", "DOCUMENTAZIONE-CODICE.md",
     "EDITOR-UI.md", "TASTIERA-BLOCCO.md",
     "Changelogs/VERIFICHE-0.2.md", "Changelogs/VERIFICHE-0.4.md",
     "Changelogs/VERIFICHE-0.5.md", "Changelogs/VERIFICHE-0.6.md", "Changelogs/VERIFICHE-0.7.md",
@@ -27,7 +26,7 @@ ROOT_FILES = (
 )
 SOURCE_DIRS = ("Source", "Tests", "scripts", "Assets", ".github")
 JUCE_HASH = "16ad4cfca70b73df6352e4e840ba5dc2e755d36b8ab2dd976ef3ecedcd18f6a9"
-EXTENSIONS = {".cpp", ".h", ".py", ".ps1", ".md", ".txt", ".yml", ".yaml", ".ico", ".png", ".xml"}
+EXTENSIONS = {".cpp", ".h", ".py", ".md", ".txt", ".yml", ".yaml", ".ico", ".png", ".xml"}
 KEYBOARD_RUNTIME_INSTRUCTIONS = r"""Tastiera dedicata: preparare Interception
 
 Questa cartella contiene solo istruzioni. La DLL, il driver e l'installer
@@ -47,15 +46,13 @@ Interception non sono inclusi nel pacchetto DualDeck.
 
 3. La DLL accettata dall'app ha SHA-256:
    AB88164C11B1B48488772D4C3BFAA4509D5B0AE9DBC5A691DC4F96F0260443C8
-   Per confrontarlo, dalla cartella di DualDeck eseguire in PowerShell:
-   Get-FileHash .\keyboard-runtime\interception.dll -Algorithm SHA256
+   Per confrontarlo, aprire il Prompt dei comandi nella cartella di DualDeck ed eseguire:
+   certutil -hashfile keyboard-runtime\interception.dll SHA256
 
-4. Se il driver non e gia installato e funzionante, aprire PowerShell come
-   amministratore nella cartella estratta Interception/command line installer.
-   Visualizzare le istruzioni del produttore:
-   .\install-interception.exe
-   Per installare:
-   .\install-interception.exe /install
+4. Se il driver non e gia installato e funzionante, aprire il Prompt dei comandi
+   come amministratore nella cartella estratta Interception/command line installer.
+   Visualizzare le istruzioni del produttore con `install-interception.exe`.
+   Per installare, eseguire `install-interception.exe /install`.
    Controllare l'esito e riavviare Windows dopo l'installazione riuscita.
    Copiare la DLL non installa il driver. DualDeck non esegue l'installer.
    Se Windows rifiuta il driver, usare la soundboard senza blocco dedicato;
@@ -75,9 +72,8 @@ x64 v1.0.1 e hash. Se il driver non e disponibile o e occupato, controllare
 l'esito dell'installer, riavviare e chiudere altre app che usano Interception.
 
 Per disinstallare il driver, disattivare il blocco e chiudere le app che usano
-Interception. Dalla cartella dell'installer originale, in PowerShell come
-amministratore, eseguire:
-.\install-interception.exe /uninstall
+   Interception. Dalla cartella dell'installer originale, nel Prompt dei comandi
+   come amministratore, eseguire `install-interception.exe /uninstall`.
 Controllare l'esito e riavviare Windows dopo la disinstallazione riuscita.
 Rimuovere la sola DLL non disinstalla il driver.
 
@@ -227,10 +223,10 @@ def bundle(root, binary, output, *, juce_hash=JUCE_HASH):
     juce = root / "deps/JUCE-9.0.4.zip"
     check_local(juce, root)
     if not juce.is_file() or sha256(juce) != juce_hash:
-        raise ValueError("JUCE archive missing or SHA-256 mismatch; run Setup.ps1")
+        raise ValueError("JUCE archive missing or SHA-256 mismatch; run python scripts/dev.py setup")
     build_record = binary.with_suffix(".build.json")
     if not build_record.is_file():
-        raise ValueError("Missing binary build record; compile with Build.ps1 first")
+        raise ValueError("Missing binary build record; compile in Visual Studio and run python scripts/dev.py finalize")
     record = json.loads(build_record.read_text(encoding="utf-8"))
     if record.get("binary_sha256") != sha256(binary):
         raise ValueError("The binary changed after compilation")

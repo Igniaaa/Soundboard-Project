@@ -224,7 +224,7 @@ void MainScreenPanel::resized()
 {
     const juce::ScopedValueSetter<bool> guard(updating, true);
     if (auto* root = dynamic_cast<foleys::Container*>(builder.findGuiItem(builder.getGuiRootNode()))) root->foleys::Container::updateColours();
-    builder.updateLayout(getLocalBounds()); syncVisibility();
+    builder.updateLayout(getLocalBounds()); applyInspectorLayout(); syncVisibility();
     if (onLayoutChanged) onLayoutChanged();
 }
 void MainScreenPanel::rebuild()
@@ -242,6 +242,47 @@ juce::Rectangle<int> MainScreenPanel::elementBounds(const juce::String& id)
 {
     if (auto* item = builder.findGuiItem(findNode(id))) return getLocalArea(item, item->getLocalBounds());
     return {};
+}
+void MainScreenPanel::setInspectorOpen(bool open)
+{
+    if (inspectorOpen == open) return;
+    inspectorOpen = open;
+    if (auto* toggle = dynamic_cast<juce::ToggleButton*>(wrappedControl("soundInspectorToggle")))
+        toggle->setToggleState(inspectorOpen, juce::dontSendNotification);
+    resized();
+}
+void MainScreenPanel::applyInspectorLayout()
+{
+    auto inspectorNode = findNode("inspector");
+    auto* inspectorItem = builder.findGuiItem(inspectorNode);
+    auto* parent = inspectorNode.isValid() ? dynamic_cast<foleys::Container*>(builder.findGuiItem(inspectorNode.getParent())) : nullptr;
+    if (!inspectorItem || !parent) return;
+    const auto width = inspectorOpen ? 304.0f : 0.0f;
+    const auto setLayoutProperty = [&inspectorNode](const juce::Identifier& name, const juce::var& value)
+    {
+        if (inspectorNode.getProperty(name) != value) inspectorNode.setProperty(name, value, nullptr);
+    };
+    if (inspectorOpen)
+    {
+        setLayoutProperty("max-width", width);
+        setLayoutProperty("min-width", width);
+        setLayoutProperty("width", width);
+    }
+    else
+    {
+        setLayoutProperty("min-width", width);
+        setLayoutProperty("max-width", width);
+        setLayoutProperty("width", width);
+    }
+    setLayoutProperty("flex-grow", 0.0f);
+    setLayoutProperty("flex-shrink", 0.0f);
+
+    auto& flex = inspectorItem->getFlexItem();
+    flex.width = flex.minWidth = flex.maxWidth = width;
+    flex.flexBasis = width;
+    flex.flexGrow = flex.flexShrink = 0.0f;
+    flex.margin = inspectorOpen ? juce::FlexItem::Margin(0.0f, 0.0f, 0.0f, 22.0f) : juce::FlexItem::Margin();
+    parent->updateLayout();
 }
 juce::StringArray MainScreenPanel::controlIds()
 {
@@ -275,6 +316,36 @@ void MainScreenPanel::setScreen(int view, bool keyboardMode, int visiblePads, bo
     }) state.getPropertyAsValue(pair.first).setValue(pair.second);
     syncVisibility();
 }
+void MainScreenPanel::migrateLayout(juce::ValueTree layout)
+{
+    if (!layout.isValid()) return;
+    const auto view = layout.getChildWithName("View");
+    auto toolbar = findById(view, "profileToolbar");
+    auto toggle = findById(view, "soundInspectorToggle");
+
+    if (toolbar.isValid() && !toggle.isValid())
+    {
+        bool hasFlexibleSpacer = false;
+        for (auto child : toolbar)
+            hasFlexibleSpacer = hasFlexibleSpacer || child.hasProperty("flex-grow");
+        if (!hasFlexibleSpacer)
+        {
+            juce::ValueTree spacer("View");
+            spacer.setProperty("flex-grow", "1", nullptr);
+            spacer.setProperty("min-width", "0", nullptr);
+            spacer.setProperty("min-height", "68", nullptr);
+            spacer.setProperty("max-height", "68", nullptr);
+            toolbar.addChild(spacer, -1, nullptr);
+        }
+        toggle = juce::ValueTree("ToggleButton");
+        toggle.setProperty("id", "soundInspectorToggle", nullptr);
+        toggle.setProperty("min-width", "132", nullptr);
+        toggle.setProperty("max-width", "132", nullptr);
+        toggle.setProperty("min-height", "38", nullptr);
+        toggle.setProperty("max-height", "38", nullptr);
+        toolbar.addChild(toggle, -1, nullptr);
+    }
+}
 void MainScreenPanel::syncVisibility()
 {
     if (syncingVisibility || closing) return;
@@ -284,6 +355,7 @@ void MainScreenPanel::syncVisibility()
         bool visible = parentVisible;
         if (node.hasProperty("visibility")) visible = visible && static_cast<bool>(state.getPropertyAsValue(node["visibility"].toString()).getValue());
         const auto id = node["id"].toString();
+        if (id == "inspector") visible = visible && inspectorOpen;
         if (id.startsWith("padTile")) visible = visible && id.substring(7).getIntValue() <= padCount;
         if (auto* item = builder.findGuiItem(node)) { item->setVisible(visible); if (auto* component = item->getWrappedComponent()) component->setVisible(visible); }
         for (auto child : node) visit(child, visible);
@@ -301,6 +373,15 @@ juce::ValueTree MainScreenPanel::embeddedLayout() const
 void MainScreenPanel::activateLayout(juce::ValueTree layout)
 {
     const juce::ScopedValueSetter<bool> guard(updating, true);
+    if (auto inspectorNode = findById(layout.getChildWithName("View"), "inspector"); inspectorNode.isValid())
+    {
+        const auto width = inspectorOpen ? 304.0f : 0.0f;
+        inspectorNode.setProperty("width", width, nullptr);
+        inspectorNode.setProperty("min-width", width, nullptr);
+        inspectorNode.setProperty("max-width", width, nullptr);
+        inspectorNode.setProperty("flex-grow", 0.0f, nullptr);
+        inspectorNode.setProperty("flex-shrink", 0.0f, nullptr);
+    }
     observedTree.removeListener(this); state.setGuiValueTree(layout); builder.createGUI(*this);
     observedTree = state.getGuiTree(); observedTree.addListener(this);
     observeVisibility();
@@ -354,6 +435,7 @@ juce::Result MainScreenPanel::loadAppearance()
 {
     juce::ValueTree layout;
     if (layoutFile.existsAsFile() && layoutFile.getSize() <= 1024 * 1024) layout = juce::ValueTree::fromXml(layoutFile.loadFileAsString());
+    migrateLayout(layout);
     const auto result = layoutFile == juce::File() || !layoutFile.exists() ? juce::Result::ok() : validateLayout(layout);
     if (!layout.isValid() || result.failed()) layout = embeddedLayout();
     if (!layoutFile.exists() && legacyFile.existsAsFile() && legacyFile.getSize() <= 1024 * 1024)
@@ -418,6 +500,7 @@ juce::Result MainScreenPanel::importLayout(const juce::File& file)
 {
     if (!file.existsAsFile() || file.getSize() > 1024 * 1024) return juce::Result::fail("File del layout principale non valido o troppo grande.");
     auto layout = juce::ValueTree::fromXml(file.loadFileAsString());
+    migrateLayout(layout);
     const auto result = validateLayout(layout); if (result.failed()) return result;
     cancelPendingUpdate(); activateLayout(layout); return juce::Result::ok();
 }

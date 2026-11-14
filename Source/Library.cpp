@@ -18,6 +18,14 @@ juce::String textOr(const juce::var& value, const char* name, const juce::String
     auto text = value[name].toString().trim();
     return text.isEmpty() ? fallback : text;
 }
+juce::String filePathKey(const juce::File& file)
+{
+    auto path = file.getFullPathName();
+#if JUCE_WINDOWS
+    path = path.toLowerCase();
+#endif
+    return path;
+}
 }
 void Library::ensureProfile()
 {
@@ -38,9 +46,10 @@ juce::Result Library::load(const juce::File& file)
     auto parsed = juce::JSON::parse(file.loadFileAsString(), root);
     if (parsed.failed() || !root.isObject()) return juce::Result::fail("Il profilo JSON non e valido: " + parsed.getErrorMessage());
     const int schema = static_cast<int>(root["SchemaVersion"]);
-    if (schema < 3 || schema > 10)
+    if (schema < 3 || schema > 11)
         return juce::Result::fail("Versione della libreria non supportata.");
     Library next;
+    bool duplicateFilesRemoved = false;
     next.defaultMode = static_cast<PlayMode>(static_cast<int>(number(root, "DefaultMode", 0, 0, 3)));
     next.outputVolume = static_cast<float>(number(root, "Volume", 70, 0, 100) / 100.0);
     next.monitorVolume = static_cast<float>(number(root, "MonitorVolume", next.outputVolume * 100, 0, 100) / 100.0);
@@ -78,14 +87,22 @@ juce::Result Library::load(const juce::File& file)
                 const auto resolved = juce::File::isAbsolutePath(path) ? juce::File(path) : mediaRoot.getChildFile(path);
                 if (std::find(profile.folders.begin(), profile.folders.end(), resolved) == profile.folders.end()) profile.folders.push_back(resolved);
             }
-        std::set<juce::String> padIds, keys;
+        if (const auto* excluded = p["ExcludedFiles"].getArray())
+            for (const auto& item : *excluded)
+            {
+                const auto path = item.toString();
+                if (path.isEmpty()) continue;
+                const auto resolved = juce::File::isAbsolutePath(path) ? juce::File(path) : mediaRoot.getChildFile(path);
+                if (std::none_of(profile.excludedFiles.begin(), profile.excludedFiles.end(), [&](const juce::File& existing)
+                    { return filePathKey(existing) == filePathKey(resolved); }))
+                    profile.excludedFiles.push_back(resolved);
+            }
+        std::set<juce::String> padIds, keys, padFiles;
         for (const auto& entry : *pads)
         {
             const auto path = entry["File"].toString();
             if (!entry.isObject() || path.isEmpty()) return juce::Result::fail("Suono senza percorso audio.");
             Pad pad;
-            pad.id = textOr(entry, "Id", juce::Uuid().toString());
-            if (!padIds.insert(pad.id).second) { pad.id = juce::Uuid().toString(); padIds.insert(pad.id); }
             pad.file = juce::File::isAbsolutePath(path) ? juce::File(path) : mediaRoot.getChildFile(path);
             // Recover an old absolute path only when the exact local filename exists.
             if (juce::File::isAbsolutePath(path) && !pad.file.existsAsFile()
@@ -94,6 +111,13 @@ juce::Result Library::load(const juce::File& file)
                 const auto local = mediaRoot.getParentDirectory().getChildFile("sounds").getChildFile(pad.file.getFileName());
                 if (local.existsAsFile()) pad.file = local;
             }
+            if (!padFiles.insert(filePathKey(pad.file)).second)
+            {
+                duplicateFilesRemoved = true;
+                continue;
+            }
+            pad.id = textOr(entry, "Id", juce::Uuid().toString());
+            if (!padIds.insert(pad.id).second) { pad.id = juce::Uuid().toString(); padIds.insert(pad.id); }
             pad.name = textOr(entry, "Name", pad.file.getFileNameWithoutExtension());
             pad.key = entry["Key"].toString(); pad.keyLabel = entry["KeyLabel"].toString();
             if (pad.key == "0001:0" || pad.key == next.djStopKey || (!pad.key.isEmpty() && !keys.insert(pad.key).second))
@@ -154,13 +178,14 @@ juce::Result Library::load(const juce::File& file)
     }
     next.ensureProfile();
     *this = std::move(next);
+    repairedDuplicateFiles = duplicateFilesRemoved;
     return juce::Result::ok();
 }
 juce::Result Library::save(const juce::File& file) const
 {
     if (profiles.empty()) return juce::Result::fail("Nessun profilo da salvare.");
     auto root = object();
-    put(root, "SchemaVersion", 10); put(root, "ActiveProfileId", current().id);
+    put(root, "SchemaVersion", 11); put(root, "ActiveProfileId", current().id);
     put(root, "DefaultMode", static_cast<int>(defaultMode));
     put(root, "Volume", outputVolume * 100.0); put(root, "MonitorVolume", monitorVolume * 100.0);
     put(root, "OutputDevice", outputDevice); put(root, "MonitorDevice", monitorDevice);
@@ -179,6 +204,10 @@ juce::Result Library::save(const juce::File& file) const
         for (const auto& folder : p.folders)
             folders.add(folder == projectRoot || folder.isAChildOf(projectRoot) ? folder.getRelativePathFrom(file.getParentDirectory()) : folder.getFullPathName());
         put(profile, "Folders", folders);
+        juce::Array<juce::var> excluded;
+        for (const auto& excludedFile : p.excludedFiles)
+            excluded.add(excludedFile.isAChildOf(projectRoot) ? excludedFile.getRelativePathFrom(file.getParentDirectory()) : excludedFile.getFullPathName());
+        put(profile, "ExcludedFiles", excluded);
         juce::Array<juce::var> pads;
         for (const auto& pad : p.pads)
         {
@@ -326,7 +355,7 @@ juce::Result runLibraryTests(const juce::File& tempRoot)
         || std::abs(b.current().pads[0].settings.chorusMix - 0.25f) > 0.0001f)
         return juce::Result::fail("Schema 10 per-pad effect settings mismatch");
     const auto savedJson = juce::JSON::parse(saved);
-    if (static_cast<int>(savedJson["SchemaVersion"]) != 10 || savedJson.hasProperty("IndividualVolumes"))
+    if (static_cast<int>(savedJson["SchemaVersion"]) != 11 || savedJson.hasProperty("IndividualVolumes"))
         return juce::Result::fail("Schema 10 per-pad effects not saved");
     auto schemaNineJson = juce::JSON::parse(saved);
     put(schemaNineJson, "SchemaVersion", 9);

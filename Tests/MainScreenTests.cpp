@@ -21,6 +21,30 @@ juce::Result runMainScreenUiTests()
         if (!c || !item || item->getWrappedComponent() != c || !panel.isParentOf(c))
             return juce::Result::fail("Control is a preview rather than a live GuiItem: " + id);
     }
+    auto* inspectorToggle = dynamic_cast<juce::ToggleButton*>(panel.wrappedControl("soundInspectorToggle"));
+    if (!inspectorToggle || !panel.findNode("soundInspectorToggle").isValid())
+        return juce::Result::fail("Sound inspector has no dedicated Foleys toggle");
+    if (!panel.wrappedControl("importButton") || !panel.wrappedControl("importButton")->isVisible())
+        return juce::Result::fail("The folder-import action is unavailable in the toolbar");
+    const auto expandedBoardWidth = panel.elementBounds("boardContent").getWidth();
+    if (panel.elementBounds("inspector").getWidth() != 0 || inspectorToggle->getToggleState() || panel.isInspectorOpen())
+        return juce::Result::fail("Sound inspector should start closed");
+    inspectorToggle->setToggleState(true, juce::sendNotificationSync);
+    const auto openBoardWidth = panel.elementBounds("boardContent").getWidth();
+    if (!inspectorToggle->getToggleState() || panel.elementBounds("inspector").getWidth() != 304
+        || panel.elementBounds("inspector").getX() < panel.elementBounds("boardContent").getRight()
+        || openBoardWidth >= expandedBoardWidth)
+        return juce::Result::fail("Opening the sound inspector did not resize the pad view");
+    inspectorToggle->setToggleState(false, juce::sendNotificationSync);
+    if (inspectorToggle->getToggleState() || panel.elementBounds("inspector").getWidth() != 0
+        || panel.elementBounds("boardContent").getWidth() != expandedBoardWidth
+        || panel.wrappedControl("padName")->isVisible() || panel.wrappedControl("padVolume")->isVisible()
+        || panel.findNode("importButton").getParent() != panel.findNode("profileToolbar"))
+        return juce::Result::fail("Closing the sound inspector did not restore the pad view and toolbar");
+    panel.setInspectorOpen(true); panel.rebuild();
+    if (!panel.isInspectorOpen() || !inspectorToggle->getToggleState() || panel.elementBounds("inspector").getWidth() != 304)
+        return juce::Result::fail("Rebuilding the main screen lost the sound-inspector state");
+    panel.setInspectorOpen(false);
     if (!panel.findNode("search").hasType("TextEditor") || !panel.findNode("outputVolume").hasType("Slider")
         || !panel.findNode("profiles").hasType("ComboBox") || !panel.findNode("padTile1").hasType("Pad")
         || !dynamic_cast<foleys::Container*>(panel.builder.findGuiItem(panel.findNode("padGrid"))))
@@ -34,6 +58,10 @@ juce::Result runMainScreenUiTests()
         board.library.current().pads.push_back(pad);
     }
     board.refresh(); board.setView(0); board.selectPad(0);
+    panel.setInspectorOpen(true);
+    if (board.padName.getText() != board.library.current().pads[0].name || !board.padName.isVisible() || !board.padVolume.isVisible())
+        return juce::Result::fail("Reopening the inspector did not show the selected sound values");
+    panel.setInspectorOpen(false);
     panel.builder.findGuiItem(panel.findNode("settingsPage"))->setVisible(true);
     panel.builder.findGuiItem(panel.findNode("dedicatedPage"))->setVisible(true);
     board.keyboardDevice.setVisible(true);
@@ -55,6 +83,8 @@ juce::Result runMainScreenUiTests()
         const auto content = panel.elementBounds("boardContent");
         for (auto* control : std::initializer_list<juce::Component*> {&board.profiles, &board.newProfile, &board.renameProfile, &board.deleteProfile, &board.globalMode})
             if (!content.contains(panel.getLocalArea(control, control->getLocalBounds()))) return juce::Result::fail("Small-width profile toolbar overflows the board content");
+        for (auto* control : std::initializer_list<juce::Component*> {inspectorToggle, panel.wrappedControl("importButton")})
+            if (!content.contains(panel.getLocalArea(control, control->getLocalBounds()))) return juce::Result::fail("Small-width inspector actions overflow the board content");
     }
     board.outputVolume.setValue(42, juce::sendNotificationSync);
     if (std::abs(board.library.outputVolume - 0.42f) > 0.001f) return juce::Result::fail("Live master slider lost its callback");
@@ -85,6 +115,42 @@ juce::Result runMainScreenUiTests()
     const auto fixtures = findProjectRoot().getChildFile("test-output/live-main-fixtures").getChildFile(juce::Uuid().toString());
     fixtures.createDirectory();
     struct Cleanup { juce::File file; ~Cleanup() { file.deleteRecursively(); } } cleanup {fixtures};
+    auto legacyLayout = panel.embeddedLayout();
+    std::function<juce::ValueTree(juce::ValueTree, const juce::String&)> locate;
+    locate = [&](juce::ValueTree node, const juce::String& id) -> juce::ValueTree
+    {
+        if (node["id"].toString() == id) return node;
+        for (auto child : node) { auto found = locate(child, id); if (found.isValid()) return found; }
+        return {};
+    };
+    auto oldInspector = locate(legacyLayout.getChildWithName("View"), "inspector");
+    auto oldToolbar = locate(legacyLayout.getChildWithName("View"), "profileToolbar");
+    auto oldToggle = locate(legacyLayout.getChildWithName("View"), "soundInspectorToggle");
+    auto oldImport = locate(legacyLayout.getChildWithName("View"), "importButton");
+    if (!oldInspector.isValid() || !oldToolbar.isValid() || !oldToggle.isValid() || !oldImport.isValid())
+        return juce::Result::fail("Cannot construct a pre-toggle main-screen layout fixture");
+    oldToggle.getParent().removeChild(oldToggle, nullptr);
+    oldImport.getParent().removeChild(oldImport, nullptr);
+    oldInspector.addChild(oldImport, -1, nullptr);
+    auto oldPadHeading = locate(legacyLayout.getChildWithName("View"), "padHeading");
+    oldPadHeading.setProperty("pos-x", "7%", nullptr);
+    oldPadHeading.setProperty("text-color", "ff123456", nullptr);
+    const auto legacyLayoutFile = fixtures.getChildFile("pre-toggle-main.xml");
+    const auto legacyLayoutXml = legacyLayout.toXmlString();
+    legacyLayoutFile.replaceWithText(legacyLayoutXml);
+    panel.layoutFile = legacyLayoutFile;
+    if (panel.loadAppearance().failed() || legacyLayoutFile.loadFileAsString() != legacyLayoutXml
+        || !panel.findNode("soundInspectorToggle").isValid()
+        || panel.findNode("importButton").getParent() != panel.findNode("profileToolbar")
+        || panel.findNode("padHeading")["pos-x"].toString() != "7%"
+        || panel.findNode("padHeading")["text-color"].toString() != "ff123456")
+        return juce::Result::fail("Loading a saved pre-toggle layout did not migrate in memory");
+    if (panel.importLayout(legacyLayoutFile).failed()
+        || !panel.findNode("soundInspectorToggle").isValid()
+        || panel.findNode("importButton").getParent() != panel.findNode("profileToolbar")
+        || panel.findNode("padHeading")["pos-x"].toString() != "7%"
+        || panel.findNode("padHeading")["text-color"].toString() != "ff123456")
+        return juce::Result::fail("Importing a saved pre-toggle layout did not migrate in memory");
     panel.layoutFile = fixtures.getChildFile("main.xml");
     board.setSize(1380, 880); board.resized();
     const auto oldSearch = panel.getLocalArea(&board.search, board.search.getLocalBounds());

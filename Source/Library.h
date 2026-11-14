@@ -21,6 +21,7 @@ struct Profile
     juce::String id, name;
     std::vector<Pad> pads;
     std::vector<juce::File> folders;
+    std::vector<juce::File> excludedFiles;
     SortField sortField = SortField::index;
     bool ascending = true;
 };
@@ -63,12 +64,14 @@ public:
     bool monitorEnabled = false, microphoneEnabled = false, microphoneMonitor = false;
     bool globalPitchEnabled = false;
     double globalPitch = 0.0;
+    bool repairedDuplicateFiles = false;
     juce::Result load(const juce::File& file);
     juce::Result save(const juce::File& file) const;
     Profile* findProfile(const juce::String& id);
     bool removeProfile(const juce::String& id);
+    bool removePad(const juce::String& profileId, const juce::String& padId);
     juce::Result renameProfile(const juce::String& id, const juce::String& name);
-    // Missing files retain their pad identity/settings; scans never remove pads.
+    // Missing files retain their pad identity/settings. Removed pads stay excluded from folder scans.
     // The optional removal count is kept for callers and is always zero.
     int mergeFolderScan(const juce::String& profileId, const FolderScan&, int* removed = nullptr);
     Profile& current() { return profiles[static_cast<std::size_t>(activeProfile)]; }

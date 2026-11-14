@@ -16,8 +16,8 @@
   Bilanciamento e recupero pad confermati dall'utente il 7 novembre 2026.
 - Percorso open source AGPL-3.0-only e copyright Alessandro Piermatteo.
 - ZIP Windows di anteprima con sorgenti corrispondenti, JUCE completo e SHA-256.
-- Build con Visual Studio/Build Tools 2022; toolchain portatile locale ancora
-  utilizzabile, senza redistribuire il precedente bootstrap.
+- Build locali in Visual Studio 2022 con preset CMake condivisi con la CI;
+  setup, prove e packaging gestiti da Python, senza script PowerShell.
 - Versione unica, metadati Windows, workflow e guida iniziale.
 - Base corrente del repository, incluso streaming audio, profili, pad,
   effetti, editor, microfono e integrazione tastiera opzionale.

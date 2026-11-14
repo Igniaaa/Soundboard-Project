@@ -76,6 +76,9 @@
                 <Label id="modeLabel" class="heading"/>
                 <ComboBox id="globalMode" class="field"/>
               </View>
+              <View flex-grow="1" min-width="0" min-height="68" max-height="68"/>
+              <Button id="importButton" class="primary" min-width="170" max-width="170" min-height="38" max-height="38" margin="0 8 0 0"/>
+              <ToggleButton id="soundInspectorToggle" min-width="132" max-width="132" min-height="38" max-height="38"/>
             </View>
             <View flex-direction="row" min-height="44" max-height="44" padding="0 0 10 0">
               <TextEditor id="search" margin="0 12 0 0" min-width="120"/>
@@ -130,7 +133,6 @@
             </View>
           </View>
           <View id="inspector" class="card" flex-direction="column" min-width="304" max-width="304" margin="0 0 0 22">
-            <Button id="importButton" class="primary" min-height="54" max-height="54" margin="0 0 14 0"/>
             <Label id="padHeading" class="heading"/>
             <TextEditor id="padName" min-height="38" max-height="38" margin="0 0 4 0"/>
             <View flex-direction="row" min-height="32" max-height="32">

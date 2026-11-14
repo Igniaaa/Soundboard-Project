@@ -62,14 +62,16 @@ collegamenti alle loro funzioni.
 
 ## Compilazione per lo sviluppo
 
-Con gli strumenti già predisposti da Setup.ps1:
+Preparare il modulo e selezionare il preset corrispondente nella barra CMake
+di Visual Studio:
 
-```powershell
-.\Setup-Foleys.ps1
-.\Build.ps1 -FoleysAudioUi -NoPromote
-.\build-foleys\bin\DualDeckJuce.exe
-.\Test.ps1 -BuildDirectory build-foleys -OutputDirectory test-output/foleys
+```text
+python scripts/dev.py setup-foleys
 ```
+
+Scegliere **DualDeck Foleys** e compilare `DualDeckJuce`. La build è in
+`build-vs-foleys/bin/DualDeckJuce.exe`; per provarla usare
+`python scripts/test.py --preset vs-foleys --output-dir test-output/foleys`.
 
 L'eseguibile normale non viene sostituito. La libreria e le impostazioni
 restano quelle del progetto: le modifiche effettuate nell'app vengono salvate
@@ -81,13 +83,9 @@ test, senza aprire dispositivi o salvare la libreria personale.
 Il layout iniziale è in **Assets/AudioSettings.xml**, incorporato da CMake. Il
 file personalizzato nella cartella data ha precedenza quando è valido.
 
-La build `-FoleysAudioUi` include il designer e i comandi nell'interfaccia.
-Per mantenere anche una variante nella cartella di sviluppo separata:
-
-```powershell
-.\Build.ps1 -FoleysDesigner -NoPromote
-.\build-foleys-designer\bin\DualDeckJuce.exe
-```
+La build **DualDeck Foleys Designer** include il designer e i comandi
+nell'interfaccia. Produce `build-vs-foleys-designer/bin/DualDeckJuce.exe` e rimane
+separata dalla build normale.
 
 Chiudere eventuali altre istanze prima di aprire una build diversa. Il parametro
 opzionale `--foleys-editor` apre direttamente il designer; non è necessario per

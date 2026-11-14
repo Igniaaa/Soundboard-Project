@@ -122,7 +122,7 @@ Per spostare e ridimensionare i controlli direttamente nella GUI, usa la [build 
 - In **Audio e uscite** puoi scegliere un microfono fisico, unirlo ai suoni nell'uscita principale e decidere se ascoltarlo anche nell'uscita cuffie. Il microfono parte disattivato; il livello è indipendente dai master dei suoni. Se selezioni CABLE Input come uscita principale, scegli CABLE Output come ingresso in Discord. Verifica che la voce non arrivi anche da un secondo percorso esterno per evitare duplicazioni; evita il monitor su diffusori per non creare ritorno.
 - Il salvataggio conserva il backup `.bak`. I salvataggi ordinari sono eseguiti in background con una copia coerente della libreria; modifiche ravvicinate aggiornano una sola richiesta pendente. Rimozione e rinomina dei profili aggiornano subito la vista e salvano in background. La chiusura attende il salvataggio finale; se fallisce, mostra l'errore e permette di riprovare senza chiudere l'app.
 - La scansione arriva a 100.000 audio o 1.000.000 file visitati, segnalando scansioni parziali. Sono stati ridotti i lavori ripetuti sulla libreria per selezione dei pad, pressione dei tasti e trascinamento dei cursori. La ricerca è differita di 150 ms nei profili sopra 5.000 pad. La vista a 960 × 640 adatta il numero di colonne e scorre verticalmente.
-- Il footer mostra il tempo software dall'azione sul pad all'elaborazione nel callback audio. Non misura l'uscita fisica o la latenza fino a Discord. `Test.ps1 -Performance` misura decodifica a freddo, ricerca, paginazione e persistenza su librerie sintetiche grandi.
+- Il footer mostra il tempo software dall'azione sul pad all'elaborazione nel callback audio. Non misura l'uscita fisica o la latenza fino a Discord. `python scripts/test.py --performance` misura decodifica a freddo, ricerca, paginazione e persistenza su librerie sintetiche grandi.
 - `DualDeckKeyboardIsolationProbe.exe` misura separatamente gli eventi Raw Input e quelli di un hook Windows senza bloccare tasti. Il blocco della sola tastiera dedicata nelle altre app richiede ancora un componente per dispositivo: vedi [TASTIERA-BLOCCO.md](TASTIERA-BLOCCO.md).
 
 ## Correzioni nella copia DualDeck-2
@@ -236,22 +236,23 @@ Il blocco della tastiera secondaria è incluso nella versione approvata e richie
 
 L'esito verificato della versione 0.7 è in [VERIFICHE-0.7.md](Changelogs/VERIFICHE-0.7.md). I rapporti [VERIFICHE-0.6.md](Changelogs/VERIFICHE-0.6.md) e [VERIFICHE-0.5.md](Changelogs/VERIFICHE-0.5.md) restano come cronologia.
 
-Sul PC di sviluppo restano utilizzabili gli strumenti portatili già in `tools`.
-Per una nuova checkout usare Visual Studio/Build Tools 2022 con C++ x64 e Windows
-SDK; vedere BUILDING.md. Setup non installa compilatori o driver.
+Per una nuova checkout servono Visual Studio 2022 con il workload C++ x64,
+Windows SDK e Python 3.10 o successivo; vedere [BUILDING.md](BUILDING.md).
+Il setup Python scarica JUCE con hash fissato, ma non installa compilatori o
+driver. Aprire la cartella in Visual Studio e scegliere il preset `vs-release`
+per compilare. `python scripts/dev.py finalize --build-dir build-vs-release` registra
+la build senza sostituire le copie approvate; `--promote` aggiorna esplicitamente
+anche l'eseguibile principale.
 
-```powershell
-.\Build.ps1
-.\Test.ps1 -AudioDevices -Performance
-```
-
-Per ricompilare questa copia usando gli strumenti portatili gia presenti nella cartella DualDeck adiacente, passa il percorso di quella cartella a `-ToolRoot` in entrambi gli script. I binari e i report vengono sempre scritti in questa copia.
-
-Su una nuova copia eseguire Setup.ps1: scarica JUCE, CMake e Ninja nelle cartelle
-del progetto, con SHA-256 fissati. Compilatore Microsoft e Windows SDK vanno
-predisposti separatamente attraverso gli strumenti ufficiali Microsoft.
-
-`Test.ps1` verifica il DSP, il filtro dei tasti, gli effetti, il mix microfono, la libreria e le interazioni sintetiche dei pad. Decodifica un file esistente per formato presente nella libreria corrente, conta separatamente i riferimenti mancanti e salva le anteprime dell'interfaccia. Controlla la registrazione Raw Input senza attivare i comandi. Con `-AudioDevices` apre le uscite reali con il microfono silenziato nel test. Con `-Performance` misura anche una libreria sintetica fino a 50.000 pad. Non modifica la libreria dell'utente. L'ascolto della voce, la verifica fisica delle due tastiere e i lettori di schermo richiedono anche una prova manuale.
+`python scripts/test.py --preset vs-release` verifica DSP, filtro dei tasti,
+effetti, mix microfono, libreria e interazioni sintetiche dei pad. Decodifica un
+file esistente per formato presente nella libreria corrente, conta separatamente
+i riferimenti mancanti e salva le anteprime dell'interfaccia. Controlla la
+registrazione Raw Input senza attivare i comandi. Con `--audio-devices` apre le
+uscite reali con il microfono silenziato nel test. Con `--performance` misura
+anche una libreria sintetica fino a 50.000 pad. Non modifica la libreria
+dell'utente. L'ascolto della voce, la verifica fisica delle due tastiere e i
+lettori di schermo richiedono anche una prova manuale.
 
 ## Struttura e prossime tappe
 

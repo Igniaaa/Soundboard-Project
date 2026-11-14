@@ -146,25 +146,30 @@ di aggiornamento e recupero è nella [guida al primo avvio](GETTING-STARTED.md).
 ## Compilare il progetto
 
 DualDeck è scritto in **C++17 con JUCE 9.0.4**. Per compilare su Windows x64
-servono PowerShell, Python 3.10+, Visual Studio o Build Tools 2022 con
-**Desktop development with C++**, MSVC v143 x64 e Windows SDK. Il primo setup
-richiede una connessione Internet.
+servono Python 3.10+, Visual Studio 2022 con il workload **Desktop development
+with C++**, MSVC v143, Windows SDK e gli strumenti CMake inclusi. Il primo setup
+richiede una connessione Internet per scaricare JUCE e verificare il suo SHA-256.
 
-Dalla cartella del progetto:
+1. Esegui `python scripts/dev.py setup` per preparare JUCE e verificare Visual
+   Studio.
+2. Apri la cartella del progetto in Visual Studio. Nella barra delle
+   configurazioni scegli il preset **DualDeck Release (Visual Studio 2022 x64)**
+   e compila il target `DualDeckJuce`.
+3. Per i controlli automatici esegui `python scripts/test.py --preset vs-release`.
+   Per i dispositivi audio reali aggiungi `--audio-devices`; per le misure
+   prestazionali aggiungi `--performance`.
+4. Dopo aver compilato la candidata, registra la build con
+   `python scripts/dev.py finalize --build-dir build-vs-release`. Questo non aggiorna
+   le copie approvate. Aggiungi `--promote` solo quando vuoi aggiornare
+   esplicitamente `DualDeckJuce.exe` e la copia versionata.
 
-```powershell
-.\Setup.ps1
-.\Build.ps1 -Toolchain Installed -NoPromote -SkipTests
-.\Test.ps1
-python -m unittest discover -s Tests -p test_release.py
-```
+I preset **DualDeck Foleys** e **DualDeck Foleys Designer** compilano in cartelle
+separate. Per il primo serve anche `python scripts/dev.py setup-foleys`.
+Il setup standard non installa compilatori, driver o componenti Interception.
+La build normale produce `build-vs-release/bin/DualDeckJuce.exe`.
 
-Il setup scarica JUCE, CMake e Ninja con verifica SHA-256; non installa
-compilatori o driver. La build genera `build-msvc/bin/DualDeckJuce.exe`.
-Con `-NoPromote` le copie locali approvate non vengono sostituite.
-
-Per toolchain portatili già disponibili, test aggiuntivi e creazione dei
-pacchetti consulta [Compilazione e packaging](BUILDING.md).
+Per i preset Visual Studio, i test, il packaging e la build CI consulta
+[Compilazione e packaging](BUILDING.md).
 Il workflow GitHub compila, testa e prepara archivi di anteprima; non pubblica
 automaticamente una release.
 

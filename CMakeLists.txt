@@ -8,6 +8,22 @@ project(DualDeckJuce VERSION ${DUALDECK_NUMERIC_VERSION} LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/release.py"
+            fingerprint --root "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE DUALDECK_FINGERPRINT_RESULT
+    OUTPUT_VARIABLE DUALDECK_CONFIGURED_SOURCE_FINGERPRINT
+    ERROR_VARIABLE DUALDECK_FINGERPRINT_ERROR
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+string(LENGTH "${DUALDECK_CONFIGURED_SOURCE_FINGERPRINT}" DUALDECK_SOURCE_FINGERPRINT_LENGTH)
+if(NOT DUALDECK_FINGERPRINT_RESULT EQUAL 0 OR
+   NOT DUALDECK_CONFIGURED_SOURCE_FINGERPRINT MATCHES "^[0-9a-fA-F]+$" OR
+   NOT DUALDECK_SOURCE_FINGERPRINT_LENGTH EQUAL 64)
+    message(FATAL_ERROR "Could not fingerprint the source snapshot: ${DUALDECK_FINGERPRINT_ERROR}")
+endif()
+file(WRITE "${CMAKE_BINARY_DIR}/dualdeck-source-fingerprint.txt"
+    "${DUALDECK_CONFIGURED_SOURCE_FINGERPRINT}\n")
 option(DUALDECK_UI_EDITOR "Build the interactive debug UI layout editor" OFF)
 option(DUALDECK_FOLEYS_AUDIO_UI "Use Foleys GUI Magic for application appearance editing" OFF)
 option(DUALDECK_FOLEYS_DESIGNER "Include the Foleys visual appearance designers" OFF)
@@ -20,7 +36,7 @@ endif()
 
 set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/JUCE-9.0.4" CACHE PATH "JUCE source directory")
 if(NOT EXISTS "${JUCE_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR "JUCE not found. Run Setup.ps1 or set JUCE_DIR.")
+    message(FATAL_ERROR "JUCE not found. Run `python scripts/dev.py setup` or set JUCE_DIR.")
 endif()
 if(WIN32)
     enable_language(RC)
@@ -36,7 +52,7 @@ add_subdirectory("${JUCE_DIR}" juce)
 if(DUALDECK_FOLEYS_AUDIO_UI)
     set(DUALDECK_FOLEYS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/foleys_gui_magic-d53d998e2bc3fb3ca394f1ee5b0c2f3886a67331")
     if(NOT EXISTS "${DUALDECK_FOLEYS_DIR}/modules/foleys_gui_magic/foleys_gui_magic.h")
-        message(FATAL_ERROR "Foleys GUI Magic not found. Run Setup-Foleys.ps1 first.")
+        message(FATAL_ERROR "Foleys GUI Magic not found. Run `python scripts/dev.py setup-foleys` first.")
     endif()
     juce_add_module("${DUALDECK_FOLEYS_DIR}/modules/foleys_gui_magic")
 endif()

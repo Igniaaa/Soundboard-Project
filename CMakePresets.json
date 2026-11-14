@@ -1,0 +1,74 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "vs-release",
+      "displayName": "DualDeck Release (Visual Studio 2022 x64)",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build-vs-release",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Release",
+        "JUCE_DIR": "${sourceDir}/deps/JUCE-9.0.4",
+        "DUALDECK_FOLEYS_AUDIO_UI": "OFF",
+        "DUALDECK_FOLEYS_DESIGNER": "OFF"
+      }
+    },
+    {
+      "name": "vs-foleys",
+      "displayName": "DualDeck Foleys (Visual Studio 2022 x64)",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build-vs-foleys",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Release",
+        "JUCE_DIR": "${sourceDir}/deps/JUCE-9.0.4",
+        "DUALDECK_FOLEYS_AUDIO_UI": "ON",
+        "DUALDECK_FOLEYS_DESIGNER": "OFF"
+      }
+    },
+    {
+      "name": "vs-foleys-designer",
+      "displayName": "DualDeck Foleys Designer (Visual Studio 2022 x64)",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build-vs-foleys-designer",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Release",
+        "JUCE_DIR": "${sourceDir}/deps/JUCE-9.0.4",
+        "DUALDECK_FOLEYS_AUDIO_UI": "ON",
+        "DUALDECK_FOLEYS_DESIGNER": "ON"
+      }
+    },
+    {
+      "name": "vs-ui-debug",
+      "displayName": "DualDeck UI Editor Debug (Visual Studio 2022 x64)",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build-vs-ui-debug",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Debug",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "JUCE_DIR": "${sourceDir}/deps/JUCE-9.0.4",
+        "DUALDECK_UI_EDITOR": "ON",
+        "BUILD_TESTING": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "vs-release", "configurePreset": "vs-release", "configuration": "Release" },
+    { "name": "vs-foleys", "configurePreset": "vs-foleys", "configuration": "Release" },
+    { "name": "vs-foleys-designer", "configurePreset": "vs-foleys-designer", "configuration": "Release" },
+    { "name": "vs-ui-debug", "configurePreset": "vs-ui-debug", "configuration": "Debug" }
+  ],
+  "testPresets": [
+    { "name": "vs-release", "configurePreset": "vs-release", "configuration": "Release", "output": { "outputOnFailure": true } },
+    { "name": "vs-foleys", "configurePreset": "vs-foleys", "configuration": "Release", "output": { "outputOnFailure": true } },
+    { "name": "vs-foleys-designer", "configurePreset": "vs-foleys-designer", "configuration": "Release", "output": { "outputOnFailure": true } }
+  ]
+}
