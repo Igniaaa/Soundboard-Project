@@ -880,7 +880,7 @@ void MainComponent::updateEditorViewportBounds()
     const int visibleHeight = outerViewport != nullptr ? outerViewport->getHeight() : getHeight();
     const int editorHeight = juce::jmax(280, juce::jmin(getHeight(), visibleHeight) - 80);
     editorViewport.setBounds((getWidth() - editorWidth) / 2, 40, editorWidth, editorHeight);
-    editorPanel.setSize(editorWidth - editorViewport.getScrollBarThickness(), 1410);
+    editorPanel.setSize(editorWidth - editorViewport.getScrollBarThickness(), 1968);
 }
 void MainComponent::parentSizeChanged() { updateEditorViewportBounds(); }
 void MainComponent::resized()

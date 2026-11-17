@@ -46,7 +46,7 @@ juce::Result Library::load(const juce::File& file)
     auto parsed = juce::JSON::parse(file.loadFileAsString(), root);
     if (parsed.failed() || !root.isObject()) return juce::Result::fail("Il profilo JSON non e valido: " + parsed.getErrorMessage());
     const int schema = static_cast<int>(root["SchemaVersion"]);
-    if (schema < 3 || schema > 11)
+    if (schema < 3 || schema > 12)
         return juce::Result::fail("Versione della libreria non supportata.");
     Library next;
     bool duplicateFilesRemoved = false;
@@ -170,6 +170,24 @@ juce::Result Library::load(const juce::File& file)
                 pad.settings.chorusDepth = static_cast<float>(number(entry, "ChorusDepth", 70, 0, 100) / 100.0);
                 pad.settings.chorusMix = static_cast<float>(number(entry, "ChorusMix", 0, 0, 100) / 100.0);
             }
+            if (schema >= 12)
+            {
+                pad.settings.mufflerEnabled = static_cast<bool>(entry["MufflerEnabled"]);
+                pad.settings.mufflerCutoffHz = static_cast<float>(number(entry, "MufflerCutoffHz", 1800, 250, 8000));
+                pad.settings.mufflerMix = static_cast<float>(number(entry, "MufflerMix", 0, 0, 100) / 100.0);
+                pad.settings.bitcrusherEnabled = static_cast<bool>(entry["BitcrusherEnabled"]);
+                pad.settings.bitcrusherBits = static_cast<int>(number(entry, "BitcrusherBits", 8, 4, 16));
+                pad.settings.bitcrusherRateReduction = static_cast<int>(number(entry, "BitcrusherRateReduction", 1, 1, 32));
+                pad.settings.bitcrusherMix = static_cast<float>(number(entry, "BitcrusherMix", 0, 0, 100) / 100.0);
+                pad.settings.phaserEnabled = static_cast<bool>(entry["PhaserEnabled"]);
+                pad.settings.phaserSpeedHz = static_cast<float>(number(entry, "PhaserSpeedHz", 0.5, 0.1, 8));
+                pad.settings.phaserDepth = static_cast<float>(number(entry, "PhaserDepth", 70, 0, 100) / 100.0);
+                pad.settings.phaserFeedback = static_cast<float>(number(entry, "PhaserFeedback", 20, 0, 70) / 100.0);
+                pad.settings.phaserMix = static_cast<float>(number(entry, "PhaserMix", 0, 0, 100) / 100.0);
+                pad.settings.distortionToneHz = static_cast<float>(number(entry, "DistortionToneHz", 16000, 400, 16000));
+                pad.settings.distortionMix = static_cast<float>(number(entry, "DistortionMix", 100, 0, 100) / 100.0);
+                pad.settings.distortionLevelDb = static_cast<float>(number(entry, "DistortionLevelDb", 0, -12, 6));
+            }
             pad.refreshFileInfo();
             profile.pads.push_back(std::move(pad));
         }
@@ -185,7 +203,7 @@ juce::Result Library::save(const juce::File& file) const
 {
     if (profiles.empty()) return juce::Result::fail("Nessun profilo da salvare.");
     auto root = object();
-    put(root, "SchemaVersion", 11); put(root, "ActiveProfileId", current().id);
+    put(root, "SchemaVersion", 12); put(root, "ActiveProfileId", current().id);
     put(root, "DefaultMode", static_cast<int>(defaultMode));
     put(root, "Volume", outputVolume * 100.0); put(root, "MonitorVolume", monitorVolume * 100.0);
     put(root, "OutputDevice", outputDevice); put(root, "MonitorDevice", monitorDevice);
@@ -239,6 +257,21 @@ juce::Result Library::save(const juce::File& file) const
             put(value, "TremoloDepth", pad.settings.tremoloDepth * 100.0);
             put(value, "DistortionEnabled", pad.settings.distortionEnabled);
             put(value, "DistortionDrive", pad.settings.distortionDrive);
+            put(value, "DistortionToneHz", pad.settings.distortionToneHz);
+            put(value, "DistortionMix", pad.settings.distortionMix * 100.0);
+            put(value, "DistortionLevelDb", pad.settings.distortionLevelDb);
+            put(value, "MufflerEnabled", pad.settings.mufflerEnabled);
+            put(value, "MufflerCutoffHz", pad.settings.mufflerCutoffHz);
+            put(value, "MufflerMix", pad.settings.mufflerMix * 100.0);
+            put(value, "BitcrusherEnabled", pad.settings.bitcrusherEnabled);
+            put(value, "BitcrusherBits", pad.settings.bitcrusherBits);
+            put(value, "BitcrusherRateReduction", pad.settings.bitcrusherRateReduction);
+            put(value, "BitcrusherMix", pad.settings.bitcrusherMix * 100.0);
+            put(value, "PhaserEnabled", pad.settings.phaserEnabled);
+            put(value, "PhaserSpeedHz", pad.settings.phaserSpeedHz);
+            put(value, "PhaserDepth", pad.settings.phaserDepth * 100.0);
+            put(value, "PhaserFeedback", pad.settings.phaserFeedback * 100.0);
+            put(value, "PhaserMix", pad.settings.phaserMix * 100.0);
             put(value, "PingPongTimeMs", pad.settings.pingPongTimeMs);
             put(value, "PingPongFeedback", pad.settings.pingPongFeedback * 100.0);
             put(value, "PingPongMix", pad.settings.pingPongMix * 100.0);
@@ -353,10 +386,10 @@ juce::Result runLibraryTests(const juce::File& tempRoot)
         || std::abs(b.current().pads[0].settings.chorusSpeedHz - 2.5f) > 0.0001f
         || std::abs(b.current().pads[0].settings.chorusDepth - 0.8f) > 0.0001f
         || std::abs(b.current().pads[0].settings.chorusMix - 0.25f) > 0.0001f)
-        return juce::Result::fail("Schema 10 per-pad effect settings mismatch");
+        return juce::Result::fail("Schema 12 per-pad effect settings mismatch");
     const auto savedJson = juce::JSON::parse(saved);
-    if (static_cast<int>(savedJson["SchemaVersion"]) != 11 || savedJson.hasProperty("IndividualVolumes"))
-        return juce::Result::fail("Schema 10 per-pad effects not saved");
+    if (static_cast<int>(savedJson["SchemaVersion"]) != 12 || savedJson.hasProperty("IndividualVolumes"))
+        return juce::Result::fail("Schema 12 per-pad effects not saved");
     auto schemaNineJson = juce::JSON::parse(saved);
     put(schemaNineJson, "SchemaVersion", 9);
     const auto schemaNineFile = data.getChildFile("schema-9.json");

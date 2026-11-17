@@ -242,12 +242,14 @@ PadEditorPanel::PadEditorPanel()
         slider->setSliderStyle(juce::Slider::LinearHorizontal);
         slider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 76, 24);
     }
-    const std::array<juce::String, 6> names {"Riverbero", "Compressore", "Tremolo", "Distorsione", "Ping-pong", "Chorus"};
-    const std::array<std::array<juce::String, 3>, 6> rowNames {{
-        {{"Durata", "Mix", ""}}, {{"Soglia", "Rapporto", ""}}, {{"Velocita", "Profondita", ""}},
-        {{"Drive", "", ""}}, {{"Tempo", "Feedback", "Mix"}}, {{"Velocita", "Profondita", "Mix"}}
+    const std::array<juce::String, 9> names {"Riverbero", "Compressore", "Tremolo", "Distorsione", "Ping-pong", "Chorus",
+                                              "Muffler", "Bitcrusher", "Phaser"};
+    const std::array<std::array<juce::String, 4>, 9> rowNames {{
+        {{"Durata", "Mix", "", ""}}, {{"Soglia", "Rapporto", "", ""}}, {{"Velocità", "Profondità", "", ""}},
+        {{"Drive", "Tono", "Mix", "Livello"}}, {{"Tempo", "Feedback", "Mix", ""}}, {{"Velocità", "Profondità", "Mix", ""}},
+        {{"Tono", "Mix", "", ""}}, {{"Bit", "Riduzione", "Mix", ""}}, {{"Velocità", "Profondità", "Feedback", "Mix"}}
     }};
-    const std::array<int, 6> counts {2, 2, 2, 1, 3, 3};
+    const std::array<int, 9> counts {2, 2, 2, 4, 3, 3, 2, 3, 4};
     for (std::size_t effect = 0; effect < extraEffects.size(); ++effect)
     {
         auto& item = extraEffects[effect];
@@ -261,6 +263,7 @@ PadEditorPanel::PadEditorPanel()
             auto& slider = item.sliders[static_cast<std::size_t>(row)];
             slider.setSliderStyle(juce::Slider::LinearHorizontal);
             slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 76, 24);
+            slider.setTitle(names[effect] + ": " + rowNames[effect][static_cast<std::size_t>(row)]);
             addAndMakeVisible(item.labels[static_cast<std::size_t>(row)]);
             addAndMakeVisible(slider);
         }
@@ -274,17 +277,30 @@ PadEditorPanel::PadEditorPanel()
     range(0, 0, 0.2, 2.0, 0.01, " s"); range(0, 1, 0, 100, 1, " %");
     range(1, 0, -48, 0, 1, " dB"); range(1, 1, 1, 20, 0.1, ":1");
     range(2, 0, 0.1, 16, 0.1, " Hz"); range(2, 1, 0, 100, 1, " %");
-    range(3, 0, 0, 100, 1, "");
+    range(3, 0, 0, 100, 1, ""); range(3, 1, 400, 16000, 1, " Hz");
+    range(3, 2, 0, 100, 1, " %"); range(3, 3, -12, 6, 0.1, " dB");
     range(4, 0, 50, 1000, 1, " ms"); range(4, 1, 0, 80, 1, " %"); range(4, 2, 0, 100, 1, " %");
     range(5, 0, 0.1, 10, 0.1, " Hz"); range(5, 1, 0, 100, 1, " %"); range(5, 2, 0, 100, 1, " %");
-    for (const int effect : {0, 4, 5})
-        extraEffects[static_cast<std::size_t>(effect)].enabled.onClick = [this, effect]
+    range(6, 0, 250, 8000, 1, " Hz"); range(6, 1, 0, 100, 1, " %");
+    range(7, 0, 4, 16, 1, " bit"); range(7, 1, 1, 32, 1, "x"); range(7, 2, 0, 100, 1, " %");
+    range(8, 0, 0.1, 8, 0.1, " Hz"); range(8, 1, 0, 100, 1, " %");
+    range(8, 2, 0, 70, 1, " %"); range(8, 3, 0, 100, 1, " %");
+    extraEffects[3].sliders[1].setSkewFactorFromMidPoint(3000);
+    extraEffects[6].sliders[0].setSkewFactorFromMidPoint(1500);
+    extraEffects[8].sliders[0].setSkewFactorFromMidPoint(1.0);
+    const std::array<std::pair<int, int>, 6> mixControls {{{0, 1}, {4, 2}, {5, 2}, {6, 1}, {7, 2}, {8, 3}}};
+    for (const auto& target : mixControls)
+        extraEffects[static_cast<std::size_t>(target.first)].enabled.onClick = [this, target]
         {
-            auto& item = extraEffects[static_cast<std::size_t>(effect)];
-            const int mixRow = item.rows - 1;
-            if (item.enabled.getToggleState() && item.sliders[static_cast<std::size_t>(mixRow)].getValue() == 0)
-                item.sliders[static_cast<std::size_t>(mixRow)].setValue(30);
+            auto& item = extraEffects[static_cast<std::size_t>(target.first)];
+            auto& mix = item.sliders[static_cast<std::size_t>(target.second)];
+            if (item.enabled.getToggleState() && mix.getValue() == 0) mix.setValue(30);
         };
+    extraEffects[3].enabled.onClick = [this]
+    {
+        auto& mix = extraEffects[3].sliders[2];
+        if (extraEffects[3].enabled.getToggleState() && mix.getValue() == 0) mix.setValue(30);
+    };
     start.setRange(0, 180, 0.01); end.setRange(0, 180, 0.01);
     cutoff.setRange(100, 18000, 1); cutoff.setSkewFactorFromMidPoint(2000);
     filterMix.setRange(0, 100, 1);
@@ -408,12 +424,27 @@ VoiceSettings PadEditorPanel::currentSettings() const
     changed.tremoloDepth = static_cast<float>(slider(2, 1) / 100.0);
     changed.distortionEnabled = extraEffects[3].enabled.getToggleState();
     changed.distortionDrive = static_cast<float>(slider(3, 0));
+    changed.distortionToneHz = static_cast<float>(slider(3, 1));
+    changed.distortionMix = static_cast<float>(slider(3, 2) / 100.0);
+    changed.distortionLevelDb = static_cast<float>(slider(3, 3));
     changed.pingPongTimeMs = static_cast<float>(slider(4, 0));
     changed.pingPongFeedback = static_cast<float>(slider(4, 1) / 100.0);
     changed.pingPongMix = extraEffects[4].enabled.getToggleState() ? static_cast<float>(slider(4, 2) / 100.0) : 0.0f;
     changed.chorusSpeedHz = static_cast<float>(slider(5, 0));
     changed.chorusDepth = static_cast<float>(slider(5, 1) / 100.0);
     changed.chorusMix = extraEffects[5].enabled.getToggleState() ? static_cast<float>(slider(5, 2) / 100.0) : 0.0f;
+    changed.mufflerEnabled = extraEffects[6].enabled.getToggleState();
+    changed.mufflerCutoffHz = static_cast<float>(slider(6, 0));
+    changed.mufflerMix = static_cast<float>(slider(6, 1) / 100.0);
+    changed.bitcrusherEnabled = extraEffects[7].enabled.getToggleState();
+    changed.bitcrusherBits = static_cast<int>(slider(7, 0));
+    changed.bitcrusherRateReduction = static_cast<int>(slider(7, 1));
+    changed.bitcrusherMix = static_cast<float>(slider(7, 2) / 100.0);
+    changed.phaserEnabled = extraEffects[8].enabled.getToggleState();
+    changed.phaserSpeedHz = static_cast<float>(slider(8, 0));
+    changed.phaserDepth = static_cast<float>(slider(8, 1) / 100.0);
+    changed.phaserFeedback = static_cast<float>(slider(8, 2) / 100.0);
+    changed.phaserMix = static_cast<float>(slider(8, 3) / 100.0);
     return changed;
 }
 void PadEditorPanel::setPad(const juce::String& name, const VoiceSettings& value, bool loopFromPad)
@@ -449,11 +480,19 @@ void PadEditorPanel::setPad(const juce::String& name, const VoiceSettings& value
     extraEffects[2].enabled.setToggleState(value.tremoloEnabled, juce::dontSendNotification);
     set(2, 0, value.tremoloSpeedHz); set(2, 1, value.tremoloDepth * 100.0f);
     extraEffects[3].enabled.setToggleState(value.distortionEnabled, juce::dontSendNotification);
-    set(3, 0, value.distortionDrive);
+    set(3, 0, value.distortionDrive); set(3, 1, value.distortionToneHz);
+    set(3, 2, value.distortionMix * 100.0f); set(3, 3, value.distortionLevelDb);
     extraEffects[4].enabled.setToggleState(value.pingPongMix > 0, juce::dontSendNotification);
     set(4, 0, value.pingPongTimeMs); set(4, 1, value.pingPongFeedback * 100.0f); set(4, 2, value.pingPongMix * 100.0f);
     extraEffects[5].enabled.setToggleState(value.chorusMix > 0, juce::dontSendNotification);
     set(5, 0, value.chorusSpeedHz); set(5, 1, value.chorusDepth * 100.0f); set(5, 2, value.chorusMix * 100.0f);
+    extraEffects[6].enabled.setToggleState(value.mufflerEnabled, juce::dontSendNotification);
+    set(6, 0, value.mufflerCutoffHz); set(6, 1, value.mufflerMix * 100.0f);
+    extraEffects[7].enabled.setToggleState(value.bitcrusherEnabled, juce::dontSendNotification);
+    set(7, 0, value.bitcrusherBits); set(7, 1, value.bitcrusherRateReduction); set(7, 2, value.bitcrusherMix * 100.0f);
+    extraEffects[8].enabled.setToggleState(value.phaserEnabled, juce::dontSendNotification);
+    set(8, 0, value.phaserSpeedHz); set(8, 1, value.phaserDepth * 100.0f);
+    set(8, 2, value.phaserFeedback * 100.0f); set(8, 3, value.phaserMix * 100.0f);
     waveform.setTrim(value.trimStart, value.trimEnd);
     message.setText("Caricamento...", juce::dontSendNotification);
     updating = false;
@@ -549,13 +588,14 @@ void PadEditorPanel::resized()
     area.removeFromTop(14);
     for (std::size_t index = 0; index < extraEffects.size(); index += 2)
     {
-        auto row = area.removeFromTop(190);
-        extraEffects[index].card = row.removeFromLeft((row.getWidth() - 14) / 2);
-        row.removeFromLeft(14);
-        extraEffects[index + 1].card = row;
+        auto row = area.removeFromTop(220);
         for (std::size_t column = 0; column < 2; ++column)
         {
+            const auto effectIndex = index + column;
+            if (effectIndex >= extraEffects.size()) break;
             auto& item = extraEffects[index + column];
+            if (column == 0) item.card = row.removeFromLeft((row.getWidth() - 14) / 2);
+            else { row.removeFromLeft(14); item.card = row; }
             item.enabled.setBounds(item.card.getX() + 16, item.card.getY() + 10, item.card.getWidth() - 32, 28);
             for (int control = 0; control < item.rows; ++control)
             {

@@ -66,8 +66,8 @@ private:
     struct ExtraEffect
     {
         juce::ToggleButton enabled;
-        std::array<juce::Label, 3> labels;
-        std::array<juce::Slider, 3> sliders;
+        std::array<juce::Label, 4> labels;
+        std::array<juce::Slider, 4> sliders;
         juce::Rectangle<int> card;
         int rows = 0;
     };
@@ -81,7 +81,7 @@ private:
     juce::TextButton zoomOutButton {"-"}, zoomInButton {"+"}, zoomResetButton {"Tutto"};
     juce::ToggleButton previewLoop {"Ascolta loop A-B"}, padLoop {"Ripeti A-B premendo il pad"};
     juce::Rectangle<int> audioCard, filterCard, delayCard;
-    std::array<ExtraEffect, 6> extraEffects;
+    std::array<ExtraEffect, 9> extraEffects;
     bool updating = false;
     bool originalPadLoop = false;
 #if defined(DUALDECK_FOLEYS_AUDIO_UI)

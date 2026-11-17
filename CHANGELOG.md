@@ -2,6 +2,7 @@
 
 ## 1.0.0-rc1 — in preparazione
 
+- Editor audio per pad ampliato con Muffler, Bitcrusher e Phaser. Distorsione con controlli Drive, Tono, Mix e Livello; impostazioni salvate per pad nello schema 12.
 - Barra dei menu classica e, nella build Foleys, personalizzazione visuale di
   tema, soundboard, tastiere ed editor degli effetti, con salvataggio separato.
 - Schermata principale convertita in elementi Foleys reali: contenitori XML,

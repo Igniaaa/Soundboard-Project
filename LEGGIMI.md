@@ -103,9 +103,11 @@ Soundboard nativa C++/JUCE per Windows x64. Chiudi eventuali versioni precedenti
 
 ## Effetti audio aggiunti
 
-Nell'editor **Audio ed effetti** di ogni pad sono disponibili riverbero (durata e mix), compressore (soglia e rapporto), tremolo (velocità e profondità), distorsione (drive), ping-pong (tempo, feedback e mix) e chorus (velocità, profondità e mix). I filtri passa basso e passa alto e l'eco/delay erano già presenti. Scorri l'editor per raggiungere tutti gli effetti e il pulsante **Salva impostazioni**. Le modifiche si applicano alle nuove riproduzioni; gli effetti aggiunti sono spenti nei profili esistenti.
+Nell'editor **Audio ed effetti** di ogni pad sono disponibili riverbero (durata e mix), compressore (soglia e rapporto), tremolo (velocità e profondità), distorsione (Drive, Tono, Mix e Livello), ping-pong (tempo, feedback e mix), chorus (velocità, profondità e mix), Muffler (tono e mix), Bitcrusher (bit, riduzione della frequenza e mix) e Phaser (velocità, profondità, feedback e mix). I filtri passa basso e passa alto e l'eco/delay erano già presenti. Scorri l'editor per raggiungere tutte le card e il pulsante **Salva impostazioni**. Le modifiche si applicano alle nuove riproduzioni; Muffler, Bitcrusher e Phaser sono spenti nei profili esistenti.
 
-Il salvataggio usa lo **schema 10** e legge anche gli schemi 3–9. Una versione precedente dell'app non può leggere una libreria salvata con lo schema 10; il salvataggio conserva il backup `.bak`.
+Drive regola la saturazione; Tono attenua gli acuti nel segnale distorto, Mix bilancia il suono pulito e quello elaborato, e Livello regola l'uscita dell'effetto. I nuovi controlli sono per pad e si salvano con **Salva impostazioni**.
+
+Il salvataggio usa lo **schema 12** e legge gli schemi 3–12. Una versione precedente dell'app non può leggere una libreria salvata con lo schema 12; il salvataggio conserva il backup `.bak`.
 
 Per spostare e ridimensionare i controlli direttamente nella GUI, usa la [build Debug con editor visivo](EDITOR-UI.md).
 
@@ -166,7 +168,7 @@ La cache PCM da 384 MiB elimina automaticamente i clip meno usati quando serve s
 
 Le cartelle collegate sono riferimenti ai normali file audio: non vengono importati database, playlist o impostazioni interne delle altre applicazioni. I file già copiati dalle versioni precedenti restano disponibili. Collegare una cartella esterna non sposta né cancella questi file.
 
-La versione 0.4 ha introdotto lo **schema 5**; la 0.6 lo schema 6. Questa copia salva con schema 10 e continua a leggere gli schemi 3–9.
+La versione 0.4 ha introdotto lo **schema 5**; la 0.6 lo schema 6. Questa copia salva con schema 12 e continua a leggere gli schemi 3–12.
 
 La scansione non segue collegamenti simbolici e si ferma a 100.000 audio o 1.000.000 file visitati, segnalando una scansione parziale. Se un file viene modificato esternamente, premi **Aggiorna cartelle**: la riproduzione successiva usa una nuova versione in cache; eventuali voci già in corso possono finire con il contenuto precedente.
 

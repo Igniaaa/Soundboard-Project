@@ -23,7 +23,7 @@ attività ancora aperte sono nella [checklist di rilascio](RELEASE-CHECKLIST.md)
 - **Usare l'editor audio:** forma d'onda, anteprima, loop tra due punti e
   ascolto trascinando il cursore sulla forma d'onda.
 - **Aggiungere effetti:** filtri, delay, riverbero, compressore, tremolo,
-  distorsione, ping-pong e chorus.
+  distorsione regolabile, Muffler, Bitcrusher, Phaser, ping-pong e chorus.
 - **Gestire le uscite:** uscita principale e ascolto in cuffia con volumi
   separati, più il mix opzionale del microfono.
 

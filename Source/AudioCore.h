@@ -41,6 +41,8 @@ struct VoiceSettings
     double speed = 1.0, trimStart = 0.0, trimEnd = 0.0, fadeIn = 0.0, fadeOut = 0.08;
     float filterCutoffHz = 3000.0f, filterMix = 0.0f;
     float highPassCutoffHz = 100.0f, highPassMix = 0.0f;
+    float mufflerCutoffHz = 1800.0f, mufflerMix = 0.0f;
+    bool mufflerEnabled = false;
     float delayTimeMs = 220.0f, delayFeedback = 0.35f, delayMix = 0.0f;
     float reverbDecay = 2.0f, reverbMix = 0.0f;
     float compressorThresholdDb = -24.0f, compressorRatio = 4.0f;
@@ -48,7 +50,13 @@ struct VoiceSettings
     float tremoloSpeedHz = 1.6f, tremoloDepth = 0.5f;
     bool tremoloEnabled = false;
     float distortionDrive = 40.0f;
+    float distortionToneHz = 16000.0f, distortionMix = 1.0f, distortionLevelDb = 0.0f;
     bool distortionEnabled = false;
+    int bitcrusherBits = 8, bitcrusherRateReduction = 1;
+    float bitcrusherMix = 0.0f;
+    bool bitcrusherEnabled = false;
+    float phaserSpeedHz = 0.5f, phaserDepth = 0.7f, phaserFeedback = 0.2f, phaserMix = 0.0f;
+    bool phaserEnabled = false;
     float pingPongTimeMs = 250.0f, pingPongFeedback = 0.3f, pingPongMix = 0.0f;
     float chorusSpeedHz = 1.5f, chorusDepth = 0.7f, chorusMix = 0.0f;
     std::uint64_t requestedAtNs = 0; // Runtime measurement; never persisted.
@@ -153,7 +161,9 @@ public:
     float meter() const { return peak.load(); }
     void prepare(double rate)
     {
-        sampleRate = rate > 0 ? rate : 48000.0;
+        // Preserve low synthetic rates used for offline rendering, while
+        // rejecting non-finite, subnormal, or unreasonably high device rates.
+        sampleRate = std::isfinite(rate) && rate >= 1.0 && rate <= 384000.0 ? rate : 48000.0;
         delayCapacity = std::max(1, static_cast<int>(std::ceil(sampleRate)));
         delay.assign(static_cast<std::size_t>(maxVoices * delayCapacity), {});
         pingPong.assign(static_cast<std::size_t>(maxVoices * delayCapacity), {});
@@ -341,10 +351,55 @@ public:
                             sourceR -= v.highPassLowR * v.highPassMix;
                         }
                     }
-                    if (v.distortionEnabled)
+                    if (v.mufflerMix > 0.0f)
                     {
-                        sourceL = std::tanh(sourceL * v.distortionGain) / std::tanh(v.distortionGain);
-                        sourceR = std::tanh(sourceR * v.distortionGain) / std::tanh(v.distortionGain);
+                        if (!v.mufflerPrimed)
+                        {
+                            v.mufflerL = sourceL;
+                            v.mufflerR = sourceR;
+                            v.mufflerPrimed = true;
+                        }
+                        else
+                        {
+                            v.mufflerL += v.mufflerAlpha * (sourceL - v.mufflerL);
+                            v.mufflerR += v.mufflerAlpha * (sourceR - v.mufflerR);
+                        }
+                        sourceL += (v.mufflerL - sourceL) * v.mufflerMix;
+                        sourceR += (v.mufflerR - sourceR) * v.mufflerMix;
+                    }
+                    if (v.distortionEnabled && v.distortionMix > 0.0f)
+                    {
+                        float wetL = std::tanh(sourceL * v.distortionGain) * v.distortionNormaliser;
+                        float wetR = std::tanh(sourceR * v.distortionGain) * v.distortionNormaliser;
+                        if (!v.distortionTonePrimed)
+                        {
+                            v.distortionToneL = wetL;
+                            v.distortionToneR = wetR;
+                            v.distortionTonePrimed = true;
+                        }
+                        else
+                        {
+                            v.distortionToneL += v.distortionToneAlpha * (wetL - v.distortionToneL);
+                            v.distortionToneR += v.distortionToneAlpha * (wetR - v.distortionToneR);
+                        }
+                        wetL = v.distortionToneL * v.distortionLevel;
+                        wetR = v.distortionToneR * v.distortionLevel;
+                        sourceL += (wetL - sourceL) * v.distortionMix;
+                        sourceR += (wetR - sourceR) * v.distortionMix;
+                    }
+                    if (v.bitcrusherMix > 0.0f)
+                    {
+                        if (v.bitcrusherCountdown <= 0)
+                        {
+                            v.bitcrusherHeldL = std::round(std::clamp(sourceL, -1.0f, 1.0f) * v.bitcrusherLevels)
+                                / v.bitcrusherLevels;
+                            v.bitcrusherHeldR = std::round(std::clamp(sourceR, -1.0f, 1.0f) * v.bitcrusherLevels)
+                                / v.bitcrusherLevels;
+                            v.bitcrusherCountdown = v.bitcrusherRateReduction - 1;
+                        }
+                        else --v.bitcrusherCountdown;
+                        sourceL += (v.bitcrusherHeldL - sourceL) * v.bitcrusherMix;
+                        sourceR += (v.bitcrusherHeldR - sourceR) * v.bitcrusherMix;
                     }
                     if (v.tremoloEnabled)
                     {
@@ -364,6 +419,41 @@ public:
                                                                 1.0f / v.compressorRatio - 1.0f);
                             sourceL *= reduction; sourceR *= reduction;
                         }
+                    }
+                    if (v.phaserMix > 0.0f)
+                    {
+                        if (v.phaserControlCountdown <= 0)
+                        {
+                            const float sweep = 1100.0f + std::sin(v.phaserPhase) * 900.0f * v.phaserDepth;
+                            const float maximumFrequency = static_cast<float>(sampleRate * 0.4);
+                            const float minimumFrequency = std::min(20.0f, maximumFrequency);
+                            for (std::size_t stage = 0; stage < v.phaserCoefficients.size(); ++stage)
+                            {
+                                const float frequency = std::clamp(sweep * phaserStageRatios[stage],
+                                    minimumFrequency, maximumFrequency);
+                                const float tangent = std::tan(3.14159265358979323846f * frequency
+                                                               / static_cast<float>(sampleRate));
+                                v.phaserCoefficients[stage] = (tangent - 1.0f) / (tangent + 1.0f);
+                            }
+                            v.phaserControlCountdown = 7;
+                        }
+                        else --v.phaserControlCountdown;
+                        float wetL = sourceL + v.phaserPreviousL * v.phaserFeedback;
+                        float wetR = sourceR + v.phaserPreviousR * v.phaserFeedback;
+                        for (std::size_t stage = 0; stage < v.phaserCoefficients.size(); ++stage)
+                        {
+                            const float inputL = wetL, inputR = wetR;
+                            wetL = -v.phaserCoefficients[stage] * inputL + v.phaserStateL[stage];
+                            wetR = -v.phaserCoefficients[stage] * inputR + v.phaserStateR[stage];
+                            v.phaserStateL[stage] = inputL + v.phaserCoefficients[stage] * wetL;
+                            v.phaserStateR[stage] = inputR + v.phaserCoefficients[stage] * wetR;
+                        }
+                        v.phaserPreviousL = wetL;
+                        v.phaserPreviousR = wetR;
+                        sourceL += (wetL - sourceL) * v.phaserMix;
+                        sourceR += (wetR - sourceR) * v.phaserMix;
+                        v.phaserPhase += v.phaserIncrement;
+                        if (v.phaserPhase >= 6.2831853f) v.phaserPhase -= 6.2831853f;
                     }
                     // Fade the source feeding the effects, so reaching EOF
                     // does not fade the wet tail to zero and abruptly restore
@@ -574,6 +664,8 @@ private:
         bool overrideMasterVolume = false;
         float filterAlpha = 1, filterMix = 0, filterL = 0, filterR = 0;
         float highPassAlpha = 1, highPassMix = 0, highPassLowL = 0, highPassLowR = 0;
+        float mufflerAlpha = 1, mufflerMix = 0, mufflerL = 0, mufflerR = 0;
+        bool mufflerPrimed = false;
         float delayMix = 0, delayFeedback = 0;
         int delaySlot = 0, delayCursor = 0, delayFrames = 1, tailFrames = 0;
         float reverbMix = 0;
@@ -589,7 +681,15 @@ private:
         float compressorThreshold = 1, compressorRatio = 1, compressorEnvelope = 0;
         float compressorAttack = 1, compressorRelease = 1;
         float tremoloDepth = 0, tremoloPhase = 0, tremoloIncrement = 0;
-        float distortionGain = 1;
+        float distortionGain = 1, distortionNormaliser = 1, distortionToneAlpha = 1;
+        float distortionToneL = 0, distortionToneR = 0, distortionMix = 0, distortionLevel = 1;
+        bool distortionTonePrimed = false;
+        int bitcrusherRateReduction = 1, bitcrusherCountdown = 0;
+        float bitcrusherMix = 0, bitcrusherLevels = 127, bitcrusherHeldL = 0, bitcrusherHeldR = 0;
+        float phaserMix = 0, phaserDepth = 0, phaserFeedback = 0, phaserPhase = 0, phaserIncrement = 0;
+        float phaserPreviousL = 0, phaserPreviousR = 0;
+        std::array<float, 4> phaserCoefficients {}, phaserStateL {}, phaserStateR {};
+        int phaserControlCountdown = 0;
         std::uint32_t delayEpoch = 0;
         int groupIndex = 0;
         bool loop = false, scrubLoop = false, released = false;
@@ -611,6 +711,10 @@ private:
     {
         if (voice.clip != nullptr) releaseClip(voice.clip);
         voice.clip = nullptr;
+    }
+    static float boundedControl(float value, float fallback, float minimum, float maximum)
+    {
+        return std::clamp(std::isfinite(value) ? value : fallback, minimum, maximum);
     }
     void renderScrub(Voice& voice, double targetSeconds, float& left, float& right)
     {
@@ -678,6 +782,10 @@ private:
         const auto highPassCutoff = std::clamp(std::isfinite(c.settings.highPassCutoffHz)
             ? static_cast<double>(c.settings.highPassCutoffHz) : 100.0, 20.0, maximumCutoff);
         v.highPassAlpha = static_cast<float>(1.0 - std::exp(-6.283185307179586 * highPassCutoff / sampleRate));
+        v.mufflerMix = c.settings.mufflerEnabled ? boundedControl(c.settings.mufflerMix, 0.0f, 0.0f, 1.0f) : 0.0f;
+        const float mufflerCutoff = boundedControl(c.settings.mufflerCutoffHz, 1800.0f, 250.0f, 8000.0f);
+        v.mufflerAlpha = static_cast<float>(1.0 - std::exp(-6.283185307179586
+            * std::clamp(static_cast<double>(mufflerCutoff), 20.0, maximumCutoff) / sampleRate));
         v.delayMix = std::clamp(c.settings.delayMix, 0.0f, 1.0f);
         v.delayFeedback = std::clamp(c.settings.delayFeedback, 0.0f, 0.8f);
         const auto delayTimeMs = std::isfinite(c.settings.delayTimeMs) ? c.settings.delayTimeMs : 220.0f;
@@ -707,6 +815,14 @@ private:
         v.chorusIncrement = 6.2831853f * std::clamp(c.settings.chorusSpeedHz, 0.1f, 10.0f) / static_cast<float>(sampleRate);
         if (v.chorusMix > 0.0f && !v.loop)
             v.tailFrames += chorusCapacity;
+        v.phaserMix = c.settings.phaserEnabled ? boundedControl(c.settings.phaserMix, 0.0f, 0.0f, 1.0f) : 0.0f;
+        v.phaserDepth = boundedControl(c.settings.phaserDepth, 0.7f, 0.0f, 1.0f);
+        v.phaserFeedback = boundedControl(c.settings.phaserFeedback, 0.2f, 0.0f, 0.7f);
+        const float phaserSpeed = std::min(boundedControl(c.settings.phaserSpeedHz, 0.5f, 0.1f, 8.0f),
+                                           static_cast<float>(sampleRate * 0.45));
+        v.phaserIncrement = 6.2831853f * phaserSpeed / static_cast<float>(sampleRate);
+        if (v.phaserMix > 0.0f && !v.loop)
+            v.tailFrames += static_cast<int>(sampleRate * 0.08);
         v.compressorEnabled = c.settings.compressorEnabled;
         v.compressorThreshold = std::pow(10.0f, std::clamp(c.settings.compressorThresholdDb, -48.0f, 0.0f) / 20.0f);
         v.compressorRatio = std::clamp(c.settings.compressorRatio, 1.0f, 20.0f);
@@ -716,7 +832,19 @@ private:
         v.tremoloDepth = std::clamp(c.settings.tremoloDepth, 0.0f, 1.0f);
         v.tremoloIncrement = 6.2831853f * std::clamp(c.settings.tremoloSpeedHz, 0.1f, 16.0f) / static_cast<float>(sampleRate);
         v.distortionEnabled = c.settings.distortionEnabled;
-        v.distortionGain = 1.0f + std::clamp(c.settings.distortionDrive, 0.0f, 100.0f) * 0.2f;
+        const float drive = boundedControl(c.settings.distortionDrive, 40.0f, 0.0f, 100.0f);
+        v.distortionGain = 1.0f + drive * 0.2f;
+        v.distortionNormaliser = 1.0f / std::max(std::tanh(v.distortionGain), 1.0e-6f);
+        v.distortionMix = v.distortionEnabled ? boundedControl(c.settings.distortionMix, 1.0f, 0.0f, 1.0f) : 0.0f;
+        const float distortionTone = boundedControl(c.settings.distortionToneHz, 16000.0f, 400.0f, 16000.0f);
+        v.distortionToneAlpha = static_cast<float>(1.0 - std::exp(-6.283185307179586
+            * std::clamp(static_cast<double>(distortionTone), 20.0, maximumCutoff) / sampleRate));
+        const float distortionLevelDb = boundedControl(c.settings.distortionLevelDb, 0.0f, -12.0f, 6.0f);
+        v.distortionLevel = std::pow(10.0f, distortionLevelDb / 20.0f);
+        v.bitcrusherMix = c.settings.bitcrusherEnabled ? boundedControl(c.settings.bitcrusherMix, 0.0f, 0.0f, 1.0f) : 0.0f;
+        const int bitDepth = std::clamp(c.settings.bitcrusherBits, 4, 16);
+        v.bitcrusherLevels = static_cast<float>((1u << (bitDepth - 1)) - 1u);
+        v.bitcrusherRateReduction = std::clamp(c.settings.bitcrusherRateReduction, 1, 32);
         if (c.settings.requestedAtNs > 0)
             lastOnsetMs.store(static_cast<double>(nowNs() - c.settings.requestedAtNs) / 1000000.0,
                               std::memory_order_relaxed);
@@ -730,6 +858,7 @@ private:
     int delayCapacity = 1;
     int reverbCapacity = 1, chorusCapacity = 1;
     static constexpr std::array<int, 4> reverbTimesMs {37, 53, 71, 89};
+    static constexpr std::array<float, 4> phaserStageRatios {0.55f, 0.75f, 1.0f, 1.35f};
     std::array<int, 4> reverbFrames {}, reverbOffsets {};
     static constexpr std::array<double, 4> reverbDiffuserTimesMs {5.1, 7.7, 10.3, 12.7};
     static constexpr float reverbDiffuserGain = 0.65f;
